@@ -16,21 +16,16 @@
 <body class="dashboard-body">
 
 <div class="dashboard-header">
-
-    ☕ Housekeeping Dashboard
-
+☕ Housekeeping Dashboard
 </div>
 
 <div class="dashboard-container"
     id="orders">
-
 </div>
 
 <script>
 
 const socket = io();
-
-loadOldOrders();
 
 socket.on('new_request', (data)=>{
 
@@ -38,87 +33,18 @@ socket.on('new_request', (data)=>{
 
 });
 
-async function loadOldOrders(){
-
-    try{
-
-        const response =
-            await fetch('/requests');
-
-        const orders =
-            await response.json();
-
-        orders.forEach(order => {
-
-            addCard({
-
-                id: order.id,
-
-                room: order.room_name,
-
-                coffee: order.coffee,
-
-                water: order.water,
-
-                tea: order.tea,
-
-                serve_time: order.serve_time,
-
-                comment: order.comment,
-
-                status: order.status
-
-            });
-
-        });
-
-    }catch(err){
-
-        console.log(err);
-
-    }
-
-}
-
 function addCard(data){
-
-    if(document.getElementById(`card-${data.id}`))
-        return;
-
-    let statusClass = 'pending';
-
-    let statusText = 'รอดำเนินการ';
-
-    if(data.status === 'PREPARING'){
-
-        statusClass = 'preparing';
-
-        statusText = 'กำลังเตรียม';
-
-    }
-
-    if(data.status === 'DONE'){
-
-        statusClass = 'done';
-
-        statusText = 'เสร็จสิ้น';
-
-    }
 
     const div = document.createElement('div');
 
     div.className = "card";
-
-    div.id = `card-${data.id}`;
 
     div.innerHTML = `
 
         <div>
 
             <div class="room">
-
                 ${data.room}
-
             </div>
 
             <div class="info">
@@ -141,10 +67,10 @@ function addCard(data){
 
             </div>
 
-            <div class="status ${statusClass}"
+            <div class="status pending"
                 id="status-${data.id}">
 
-                ${statusText}
+                รอดำเนินการ
 
             </div>
 
