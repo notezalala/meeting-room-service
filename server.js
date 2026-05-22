@@ -11,6 +11,26 @@ const io = new Server(server);
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+const path = require('path');
+
+// =========================
+// FIX ROUTE (สำคัญสำหรับ Render)
+// =========================
+
+app.get('/order.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'order.html'));
+});
+
+app.get('/dashboard.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// =========================
+// fallback กันหลุด (ต้องอยู่ล่างสุด)
+// =========================
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
 
 // =========================
 // SQLite DB
