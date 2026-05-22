@@ -1,21 +1,26 @@
 {
-  "name": "order-coffee",
+  "name": "meeting-room-service",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
-  
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "main": "server.js",
+
+  "engines": {
+    "node": "20.x"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+
+  "scripts": {
+    "start": "node server.js"
+  },
+
   "dependencies": {
-    "cors": "^2.8.6",
-    "express": "^5.2.1",
-    "socket.io": "^4.8.3",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+
+    "cors": "^2.8.5",
+
+    "express": "^4.19.2",
+
+    "socket.io": "^4.7.5",
+
+    "sqlite3": "5.1.7"
+
   }
 }
