@@ -1,415 +1,74 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
-
 <meta charset="UTF-8">
-
-<title>Meeting Room Service</title>
-
+<title>Order</title>
 <link rel="stylesheet" href="style.css">
-
+<script src="/socket.io/socket.io.js"></script>
 </head>
 
 <body>
 
 <div class="container">
 
-    <div class="header">
+<h2>☕ Order</h2>
 
-        ☕ Meeting Room Service
+<input id="room" placeholder="Room">
+<input id="coffee" type="number" placeholder="Coffee">
+<input id="water" type="number" placeholder="Water">
+<input id="tea" type="number" placeholder="Tea">
 
-        <div class="room-title"
-            id="roomTitle">
-        </div>
+<input id="serve_time" placeholder="Serve Time">
 
-    </div>
+<button onclick="setTime(15)">+15 นาที</button>
+<button onclick="setTime(30)">+30 นาที</button>
 
-    <div class="section">
+<textarea id="comment" placeholder="Comment"></textarea>
 
-        <div class="title">
-            เลือกเครื่องดื่ม
-        </div>
-
-        <div class="menu-grid">
-
-            <div class="menu-card">
-
-                <img src="https://cdn-icons-png.flaticon.com/512/924/924514.png">
-
-                <div class="menu-name">
-                    Coffee
-                </div>
-
-                <div class="counter">
-
-                    <button class="minus"
-                        onclick="decrease('coffee')">
-
-                        -
-
-                    </button>
-
-                    <div class="count"
-                        id="coffeeCount">
-
-                        0
-
-                    </div>
-
-                    <button class="plus"
-                        onclick="increase('coffee')">
-
-                        +
-
-                    </button>
-
-                </div>
-
-            </div>
-
-            <div class="menu-card">
-
-                <img src="https://cdn-icons-png.flaticon.com/512/3105/3105807.png">
-
-                <div class="menu-name">
-                    Water
-                </div>
-
-                <div class="counter">
-
-                    <button class="minus"
-                        onclick="decrease('water')">
-
-                        -
-
-                    </button>
-
-                    <div class="count"
-                        id="waterCount">
-
-                        0
-
-                    </div>
-
-                    <button class="plus"
-                        onclick="increase('water')">
-
-                        +
-
-                    </button>
-
-                </div>
-
-            </div>
-
-            <div class="menu-card">
-
-                <img src="https://cdn-icons-png.flaticon.com/512/415/415733.png">
-
-                <div class="menu-name">
-                    Tea
-                </div>
-
-                <div class="counter">
-
-                    <button class="minus"
-                        onclick="decrease('tea')">
-
-                        -
-
-                    </button>
-
-                    <div class="count"
-                        id="teaCount">
-
-                        0
-
-                    </div>
-
-                    <button class="plus"
-                        onclick="increase('tea')">
-
-                        +
-
-                    </button>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-    <div class="section">
-
-        <div class="title">
-            เวลาเสิร์ฟ
-        </div>
-
-        <div class="time-grid">
-
-            <button class="time-btn active"
-                onclick="selectTime(this,'ตอนนี้')">
-
-                ตอนนี้
-
-            </button>
-
-            <button class="time-btn"
-                id="time15Btn">
-
-                Loading...
-
-            </button>
-
-            <button class="time-btn"
-                id="time30Btn">
-
-                Loading...
-
-            </button>
-
-            <button class="time-btn"
-                onclick="customTime()">
-
-                กำหนดเอง
-
-            </button>
-
-        </div>
-
-    </div>
-
-    <div class="section">
-
-        <div class="title">
-            หมายเหตุ
-        </div>
-
-        <textarea id="comment"
-placeholder="ระบุเพิ่มเติม..."></textarea>
-
-    </div>
-
-    <button class="send-btn"
-        onclick="sendOrder()">
-
-        ส่งรายการ
-
-    </button>
+<button onclick="sendOrder()">ส่งออเดอร์</button>
 
 </div>
 
 <script>
 
-let coffee = 0;
-let water = 0;
-let tea = 0;
+const socket = io();
 
-let serve_time = "ตอนนี้";
-
-const params =
-    new URLSearchParams(window.location.search);
-
-const room =
-    params.get('room');
-
-document.getElementById('roomTitle')
-.innerHTML = room;
-
-function updateUI(){
-
-    document.getElementById('coffeeCount')
-    .innerHTML = coffee;
-
-    document.getElementById('waterCount')
-    .innerHTML = water;
-
-    document.getElementById('teaCount')
-    .innerHTML = tea;
-
-}
-
-function increase(type){
-
-    if(type === 'coffee') coffee++;
-    if(type === 'water') water++;
-    if(type === 'tea') tea++;
-
-    updateUI();
-
-}
-
-function decrease(type){
-
-    if(type === 'coffee' && coffee > 0)
-        coffee--;
-
-    if(type === 'water' && water > 0)
-        water--;
-
-    if(type === 'tea' && tea > 0)
-        tea--;
-
-    updateUI();
-
-}
-
-function selectTime(button,time){
-
-    document.querySelectorAll('.time-btn')
-    .forEach(btn=>{
-
-        btn.classList.remove('active');
-
-    });
-
-    button.classList.add('active');
-
-    serve_time = time;
-
-}
-
-function customTime(){
-
-    const time =
-        prompt("กรอกเวลา เช่น 13:30");
-
-    if(time){
-
-        serve_time = time;
-
-    }
-
-}
-
-function generateDynamicTimes(){
+function getTime(min){
 
     const now = new Date();
+    now.setMinutes(now.getMinutes() + min);
 
-    const plus15 =
-        new Date(now.getTime() + 15 * 60000);
-
-    const plus30 =
-        new Date(now.getTime() + 30 * 60000);
-
-    const time15 =
-        formatTime(plus15);
-
-    const time30 =
-        formatTime(plus30);
-
-    const btn15 =
-        document.getElementById('time15Btn');
-
-    const btn30 =
-        document.getElementById('time30Btn');
-
-    btn15.innerText = time15;
-
-    btn30.innerText = time30;
-
-    btn15.onclick = function(){
-
-        selectTime(btn15,time15);
-
-    };
-
-    btn30.onclick = function(){
-
-        selectTime(btn30,time30);
-
-    };
-
+    return now.getHours().toString().padStart(2,'0')
+    + ':' +
+    now.getMinutes().toString().padStart(2,'0');
 }
 
-function formatTime(date){
-
-    const hh =
-        String(date.getHours())
-        .padStart(2,'0');
-
-    const mm =
-        String(date.getMinutes())
-        .padStart(2,'0');
-
-    return `${hh}:${mm}`;
-
-}
-
-window.onload = function(){
-
-    generateDynamicTimes();
-
+function setTime(min){
+    document.getElementById('serve_time').value = getTime(min);
 }
 
 async function sendOrder(){
 
-    try{
+    const data = {
+        room: document.getElementById('room').value,
+        coffee: document.getElementById('coffee').value,
+        water: document.getElementById('water').value,
+        tea: document.getElementById('tea').value,
+        serve_time: document.getElementById('serve_time').value,
+        comment: document.getElementById('comment').value
+    };
 
-        const response =
-            await fetch('/request',{
+    await fetch('/request', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+    });
 
-            method:'POST',
-
-            headers:{
-                'Content-Type':'application/json'
-            },
-
-            body:JSON.stringify({
-
-                room: room,
-
-                coffee: coffee,
-
-                water: water,
-
-                tea: tea,
-
-                serve_time: serve_time,
-
-                comment:
-                    document
-                    .getElementById('comment')
-                    .value
-
-            })
-
-        });
-
-        const result =
-            await response.json();
-
-        if(result.success){
-
-            alert('ส่งรายการสำเร็จ');
-
-            coffee = 0;
-            water = 0;
-            tea = 0;
-
-            updateUI();
-
-            document
-            .getElementById('comment')
-            .value = '';
-
-        }
-
-    }catch(err){
-
-        console.log(err);
-
-        alert('Server Error');
-
-    }
+    alert("ส่งแล้ว");
 
 }
 
 </script>
 
 </body>
-
 </html>

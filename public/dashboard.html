@@ -19,62 +19,64 @@
 
 const socket = io();
 
-// ============================
-// โหลดข้อมูลเก่าตอนเปิดหน้า
-// ============================
+// =====================
+// LOAD ALL
+// =====================
 socket.emit('get_all_requests');
 
-// รับข้อมูลทั้งหมดตอนโหลดครั้งแรก
 socket.on('all_requests', (list) => {
-    document.getElementById('orders').innerHTML = "";
+
+    const container = document.getElementById('orders');
+    container.innerHTML = "";
+
     list.forEach(addCard);
+
 });
 
-// รับรายการใหม่ realtime
+// =====================
+// NEW ORDER REALTIME
+// =====================
 socket.on('new_request', (data) => {
     addCard(data);
 });
 
-// ============================
-// สร้าง Card
-// ============================
+// =====================
+// CARD
+// =====================
 function addCard(data){
+
+    if(!data.room) data.room = "UNKNOWN";
 
     const div = document.createElement('div');
     div.className = "card";
+    div.id = `card-${data.id}`;
 
     div.innerHTML = `
         <div>
 
-            <div class="room">
-                ${data.room}
-            </div>
+            <div class="room">${data.room}</div>
 
             <div class="info">
                 ☕ Coffee : ${data.coffee}<br>
                 💧 Water : ${data.water}<br>
-                🍵 Tea : ${data.tea}
-                <br><br>
-                🕒 เวลาเสิร์ฟ : ${data.serve_time}
-                <br><br>
+                🍵 Tea : ${data.tea}<br><br>
+                🕒 เวลาเสิร์ฟ : ${data.serve_time}<br><br>
                 📝 หมายเหตุ : ${data.comment || '-'}
             </div>
 
             <div class="status pending" id="status-${data.id}">
-                รอดำเนินการ
+                ${getStatusText(data.status)}
             </div>
 
         </div>
 
         <div class="actions">
 
-            <button class="btn-preparing"
-                onclick="setPreparing(${data.id})">
+            <button class="btn-preparing" onclick="setPreparing(${data.id})">
                 กำลังเตรียม
             </button>
 
-            <button class="btn-done"
-                onclick="setDone(${data.id})">
+            <button class="btn-done" onclick="setDone(${data.id})">
                 เสร็จสิ้น
             </button>
 
@@ -84,29 +86,48 @@ function addCard(data){
     document.getElementById('orders').prepend(div);
 }
 
-// ============================
-// update status UI
-// ============================
+// =====================
+// STATUS TEXT
+// =====================
+function getStatusText(status){
+
+    if(status === 'preparing') return 'กำลังเตรียม';
+    if(status === 'done') return 'เสร็จสิ้น';
+
+    return 'รอดำเนินการ';
+}
+
+// =====================
+// UPDATE STATUS
+// =====================
 function setPreparing(id){
-    const status = document.getElementById(`status-${id}`);
-    status.innerHTML = "กำลังเตรียม";
-    status.className = "status preparing";
 
     socket.emit('update_status', {
-        id: id,
+        id,
         status: 'preparing'
     });
+
+    updateUI(id, 'preparing', 'กำลังเตรียม');
 }
 
 function setDone(id){
-    const status = document.getElementById(`status-${id}`);
-    status.innerHTML = "เสร็จสิ้น";
-    status.className = "status done";
 
     socket.emit('update_status', {
-        id: id,
+        id,
         status: 'done'
     });
+
+    updateUI(id, 'done', 'เสร็จสิ้น');
+}
+
+function updateUI(id, cls, text){
+
+    const el = document.getElementById(`status-${id}`);
+
+    if(el){
+        el.className = `status ${cls}`;
+        el.innerHTML = text;
+    }
 }
 
 </script>

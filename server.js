@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -11,12 +12,10 @@ const io = new Server(server);
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
-const path = require('path');
 
 // =========================
-// FIX ROUTE (สำคัญสำหรับ Render)
+// ROUTE FIX (Render safe)
 // =========================
-
 app.get('/order.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'order.html'));
 });
@@ -25,27 +24,15 @@ app.get('/dashboard.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-// =========================
-// fallback กันหลุด (ต้องอยู่ล่างสุด)
-// =========================
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
 // =========================
-// SQLite DB
+// SQLite
 // =========================
-const db = new sqlite3.Database('./meeting.db', (err) => {
-    if (err) {
-        console.log(err);
-    } else {
-        console.log("SQLite Connected");
-    }
-});
+const db = new sqlite3.Database('./meeting.db');
 
-// =========================
-// Create Table
-// =========================
 db.serialize(() => {
     db.run(`
         CREATE TABLE IF NOT EXISTS requests (
@@ -63,7 +50,7 @@ db.serialize(() => {
 });
 
 // =========================
-// POST NEW REQUEST
+// POST ORDER
 // =========================
 app.post('/request', (req, res) => {
 
@@ -71,28 +58,19 @@ app.post('/request', (req, res) => {
 
     db.run(`
         INSERT INTO requests
-        (
-            room_name,
-            coffee,
-            water,
-            tea,
-            serve_time,
-            comment,
-            status
-        )
+        (room_name, coffee, water, tea, serve_time, comment, status)
         VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
     `,
     [room, coffee, water, tea, serve_time, comment],
     function (err) {
 
         if (err) {
-            console.log(err);
             return res.status(500).json({ error: err.message });
         }
 
         const newData = {
             id: this.lastID,
-            room,
+            room: room,
             coffee,
             water,
             tea,
@@ -110,14 +88,14 @@ app.post('/request', (req, res) => {
 });
 
 // =========================
-// GET ALL REQUESTS (REST API)
+// GET ALL ORDER (DESC)
 // =========================
 app.get('/requests', (req, res) => {
 
     db.all(`
         SELECT *
         FROM requests
-        ORDER BY created_at DESC
+        ORDER BY id DESC
     `, [], (err, rows) => {
 
         if (err) {
@@ -131,61 +109,54 @@ app.get('/requests', (req, res) => {
 });
 
 // =========================
-// SOCKET IO
+// SOCKET
 // =========================
 io.on('connection', (socket) => {
 
     console.log('Client Connected');
 
-    // ส่งข้อมูลทั้งหมดตอนโหลดหน้า
     socket.on('get_all_requests', () => {
 
         db.all(`
             SELECT *
             FROM requests
-            ORDER BY created_at DESC
+            ORDER BY id DESC
         `, [], (err, rows) => {
 
             if (!err) {
-                socket.emit('all_requests', rows);
+
+                const fixed = rows.map(r => ({
+                    id: r.id,
+                    room: r.room_name,
+                    coffee: r.coffee,
+                    water: r.water,
+                    tea: r.tea,
+                    serve_time: r.serve_time,
+                    comment: r.comment,
+                    status: r.status
+                }));
+
+                socket.emit('all_requests', fixed);
             }
 
         });
 
     });
 
+    socket.on('update_status', (data) => {
+
+        db.run(`
+            UPDATE requests
+            SET status = ?
+            WHERE id = ?
+        `, [data.status, data.id]);
+
+    });
+
 });
 
 // =========================
-// CLEAR AT MIDNIGHT
-// =========================
-function clearAtMidnight() {
-
-    const now = new Date();
-    const next = new Date();
-    next.setHours(24, 0, 0, 0);
-
-    const ms = next - now;
-
-    setTimeout(() => {
-
-        db.run(`DELETE FROM requests`, [], (err) => {
-            if (!err) {
-                console.log("Cleared all requests at midnight");
-                io.emit('clear_all');
-            }
-        });
-
-        clearAtMidnight();
-
-    }, ms);
-
-}
-
-clearAtMidnight();
-
-// =========================
-// START SERVER
+// START
 // =========================
 const PORT = process.env.PORT || 3000;
 
