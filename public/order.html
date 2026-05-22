@@ -42,7 +42,7 @@
         <div class="menu-grid">
 
             <div class="menu-card">
-                <img src="https://cdn-icons-png.flaticon.com/512/924/924514.png">
+                <img src="https://images.emojiterra.com/google/android-oreo/512px/2615.png">
                 <div class="menu-name">Coffee</div>
 
                 <div class="counter">
@@ -53,7 +53,7 @@
             </div>
 
             <div class="menu-card">
-                <img src="https://cdn-icons-png.flaticon.com/512/3105/3105807.png">
+                <img src="https://png.pngtree.com/png-vector/20260104/ourmid/pngtree-a-glass-of-sparkling-water-on-white-background-png-image_18419981.webp">
                 <div class="menu-name">Water</div>
 
                 <div class="counter">
@@ -96,7 +96,6 @@
     <div class="section">
 
         <div class="title">หมายเหตุ</div>
-
         <textarea id="comment"></textarea>
 
     </div>
@@ -115,7 +114,6 @@ document.getElementById('roomTitle').innerText = room;
 
 // ================= CHANGE =================
 function change(type,val){
-
     if(type==='coffee') coffee=Math.max(0,coffee+val);
     if(type==='water') water=Math.max(0,water+val);
     if(type==='tea') tea=Math.max(0,tea+val);
@@ -127,28 +125,24 @@ function change(type,val){
 
 // ================= TIME =================
 function selectTime(btn,time){
-
     document.querySelectorAll('.time-btn')
     .forEach(b=>b.classList.remove('active'));
-
     btn.classList.add('active');
-
-    serve_time = time;
+    serve_time=time;
 }
 
 function customTime(){
     const t = prompt("ใส่เวลา เช่น 13:30");
-    if(t) serve_time = t;
+    if(t) serve_time=t;
 }
 
-// ================= FORMAT =================
+// ================= FORMAT TIME =================
 function format(d){
     return String(d.getHours()).padStart(2,'0')+":"+String(d.getMinutes()).padStart(2,'0');
 }
 
-// ================= LOAD TIME =================
+// ================= LOAD TIME BUTTON =================
 window.onload=function(){
-
     const now=new Date();
 
     const t15 = document.getElementById('t15');
@@ -161,56 +155,39 @@ window.onload=function(){
     t30.onclick=()=>selectTime(t30,t30.innerText);
 }
 
-// ================= SEND (FIX HERE) =================
+// ================= SEND =================
 async function send(){
 
-    const name = document.getElementById('customerName').value.trim();
+    const name = document.getElementById('customerName').value;
 
-    // ❌ ไม่มีชื่อ
     if(!name){
         alert("กรุณากรอกชื่อผู้สั่ง");
         return;
     }
 
-    // ❌ ไม่มีรายการเลย
-    if(coffee === 0 && water === 0 && tea === 0){
-        alert("กรุณาเลือกเครื่องดื่มอย่างน้อย 1 รายการ");
-        return;
-    }
+    await fetch('/request',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+            room,
+            customer_name: name,
+            coffee,
+            water,
+            tea,
+            serve_time,
+            comment:document.getElementById('comment').value
+        })
+    });
 
-    try{
+    alert("ส่งรายการสำเร็จ");
 
-        await fetch('/request',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({
-                room,
-                customer_name: name,
-                coffee,
-                water,
-                tea,
-                serve_time,
-                comment: document.getElementById('comment').value
-            })
-        });
+    coffee=water=tea=0;
+    serve_time="ตอนนี้";
 
-        alert("ส่งรายการสำเร็จ");
+    document.getElementById('comment').value='';
+    document.getElementById('customerName').value='';
 
-        // reset
-        coffee = 0;
-        water = 0;
-        tea = 0;
-        serve_time = "ตอนนี้";
-
-        document.getElementById('comment').value = '';
-        document.getElementById('customerName').value = '';
-
-        change('coffee',0);
-
-    }catch(err){
-        console.log(err);
-        alert("เกิดข้อผิดพลาด");
-    }
+    change('coffee',0);
 }
 
 </script>
