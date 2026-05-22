@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // =========================
-// ROUTE FIX
+// ROUTE
 // =========================
 app.get('/order.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'order.html'));
@@ -50,7 +50,7 @@ db.serialize(() => {
 });
 
 // =========================
-// POST ORDER
+// POST ORDER (FIX ROOM ALWAYS)
 // =========================
 app.post('/request', (req, res) => {
 
@@ -61,14 +61,21 @@ app.post('/request', (req, res) => {
         (room_name, coffee, water, tea, serve_time, comment, status)
         VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
     `,
-    [room, coffee, water, tea, serve_time, comment],
+    [
+        room || 'UNKNOWN',
+        coffee,
+        water,
+        tea,
+        serve_time,
+        comment
+    ],
     function (err) {
 
         if (err) return res.status(500).json({ error: err.message });
 
         const newData = {
             id: this.lastID,
-            room,
+            room: room || 'UNKNOWN',
             coffee,
             water,
             tea,
@@ -86,7 +93,7 @@ app.post('/request', (req, res) => {
 });
 
 // =========================
-// GET ALL (LOCK DESC BY ID)
+// GET ALL (LOCK ORDER)
 // =========================
 app.get('/requests', (req, res) => {
 
@@ -98,7 +105,19 @@ app.get('/requests', (req, res) => {
 
         if (err) return res.status(500).json({ error: err.message });
 
-        res.json(rows);
+        // 🔥 FIX ROOM FIELD
+        const fixed = rows.map(r => ({
+            id: r.id,
+            room: r.room_name || 'UNKNOWN',
+            coffee: r.coffee,
+            water: r.water,
+            tea: r.tea,
+            serve_time: r.serve_time,
+            comment: r.comment,
+            status: r.status
+        }));
+
+        res.json(fixed);
 
     });
 
@@ -109,8 +128,6 @@ app.get('/requests', (req, res) => {
 // =========================
 io.on('connection', (socket) => {
 
-    console.log('Client Connected');
-
     socket.on('get_all_requests', () => {
 
         db.all(`
@@ -120,7 +137,19 @@ io.on('connection', (socket) => {
         `, [], (err, rows) => {
 
             if (!err) {
-                socket.emit('all_requests', rows);
+
+                const fixed = rows.map(r => ({
+                    id: r.id,
+                    room: r.room_name || 'UNKNOWN',
+                    coffee: r.coffee,
+                    water: r.water,
+                    tea: r.tea,
+                    serve_time: r.serve_time,
+                    comment: r.comment,
+                    status: r.status
+                }));
+
+                socket.emit('all_requests', fixed);
             }
 
         });
@@ -140,10 +169,4 @@ io.on('connection', (socket) => {
 });
 
 // =========================
-// START SERVER
-// =========================
-const PORT = process.env.PORT || 3000;
-
-server.listen(PORT, () => {
-    console.log(`Server running on ${PORT}`);
-});
+server.listen(3000);

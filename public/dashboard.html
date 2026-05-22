@@ -1,60 +1,29 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-<meta charset="UTF-8">
-<title>Dashboard</title>
-<link rel="stylesheet" href="style.css">
-<script src="/socket.io/socket.io.js"></script>
-</head>
-
-<body class="dashboard-body">
-
-<div class="dashboard-header">
-☕ Housekeeping Dashboard
-</div>
-
-<div class="dashboard-container" id="orders"></div>
-
-<script>
-
 const socket = io();
 
-// =====================
-// LOAD DATA (LOCK ORDER)
-// =====================
+// LOAD
 socket.emit('get_all_requests');
 
 socket.on('all_requests', (list) => {
 
     const container = document.getElementById('orders');
-
-    // 🔥 HARD RESET DOM
     container.innerHTML = "";
 
-    // ❗ IMPORTANT: NO SORT, NO CHANGE ORDER
-    for (let i = 0; i < list.length; i++) {
-        addCard(list[i]);
-    }
+    // 🔥 HARD SORT (กัน DB เพี้ยน)
+    list.sort((a, b) => b.id - a.id);
 
+    list.forEach(addCard);
 });
 
-// =====================
-// REALTIME NEW ORDER
-// =====================
+// REALTIME
 socket.on('new_request', (data) => {
 
-    if (document.getElementById(`card-${data.id}`)) return;
+    if(document.getElementById(`card-${data.id}`)) return;
 
     addCard(data);
-
 });
 
-// =====================
-// ADD CARD
-// =====================
+// CARD
 function addCard(data){
-
-    if(!data.room) data.room = "UNKNOWN";
 
     const div = document.createElement('div');
     div.className = "card";
@@ -63,7 +32,7 @@ function addCard(data){
     div.innerHTML = `
         <div>
 
-            <div class="room">${data.room}</div>
+            <div class="room">${data.room || 'UNKNOWN'}</div>
 
             <div class="info">
                 ☕ Coffee : ${data.coffee}<br>
@@ -73,74 +42,13 @@ function addCard(data){
                 📝 หมายเหตุ : ${data.comment || '-'}
             </div>
 
-            <div class="status pending" id="status-${data.id}">
-                ${getStatus(data.status)}
+            <div class="status" id="status-${data.id}">
+                ${data.status}
             </div>
-
-        </div>
-
-        <div class="actions">
-
-            <button class="btn-preparing" onclick="setPreparing(${data.id})">
-                กำลังเตรียม
-            </button>
-
-            <button class="btn-done" onclick="setDone(${data.id})">
-                เสร็จสิ้น
-            </button>
 
         </div>
     `;
 
-    // 🔥 ALWAYS NEW ON TOP
-    document.getElementById('orders').prepend(div);
+    // 🔥 IMPORTANT: always top
+    container.prepend(div);
 }
-
-// =====================
-// STATUS TEXT
-// =====================
-function getStatus(status){
-
-    if(status === 'preparing') return 'กำลังเตรียม';
-    if(status === 'done') return 'เสร็จสิ้น';
-
-    return 'รอดำเนินการ';
-}
-
-// =====================
-// UPDATE STATUS
-// =====================
-function setPreparing(id){
-
-    socket.emit('update_status', {
-        id,
-        status: 'preparing'
-    });
-
-    updateUI(id,'preparing','กำลังเตรียม');
-}
-
-function setDone(id){
-
-    socket.emit('update_status', {
-        id,
-        status: 'done'
-    });
-
-    updateUI(id,'done','เสร็จสิ้น');
-}
-
-function updateUI(id,cls,text){
-
-    const el = document.getElementById(`status-${id}`);
-
-    if(el){
-        el.className = `status ${cls}`;
-        el.innerHTML = text;
-    }
-}
-
-</script>
-
-</body>
-</html>
