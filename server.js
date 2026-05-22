@@ -9,6 +9,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// ================= MIDDLEWARE =================
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
@@ -26,14 +27,22 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-// ================= DB =================
-const db = new sqlite3.Database('./meeting.db');
+// ================= DATABASE (FIXED ORDER) =================
+const db = new sqlite3.Database('./meeting.db', (err) => {
+    if (err) {
+        console.log(err);
+    } else {
+        console.log("SQLite Connected");
+    }
+});
 
 db.serialize(() => {
+
     db.run(`
         CREATE TABLE IF NOT EXISTS requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             room_name TEXT,
+            customer_name TEXT,
             coffee INTEGER,
             water INTEGER,
             tea INTEGER,
@@ -43,26 +52,39 @@ db.serialize(() => {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
+
 });
 
-// ================= CREATE =================
+// ================= POST ORDER =================
 app.post('/request', (req, res) => {
 
-    const { room, coffee, water, tea, serve_time, comment } = req.body;
+    const {
+        room,
+        customer_name,
+        coffee,
+        water,
+        tea,
+        serve_time,
+        comment
+    } = req.body;
 
     db.run(`
         INSERT INTO requests
-        (room_name, coffee, water, tea, serve_time, comment, status)
-        VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
+        (room_name, customer_name, coffee, water, tea, serve_time, comment, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')
     `,
-    [room || 'UNKNOWN', coffee, water, tea, serve_time, comment],
+    [room, customer_name, coffee, water, tea, serve_time, comment],
     function (err) {
 
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.log(err);
+            return res.status(500).json({ error: err.message });
+        }
 
-        const data = {
+        const newData = {
             id: this.lastID,
-            room_name: room || 'UNKNOWN',
+            room_name: room,
+            customer_name,
             coffee,
             water,
             tea,
@@ -71,34 +93,18 @@ app.post('/request', (req, res) => {
             status: 'PENDING'
         };
 
-        io.emit('new_request', data);
+        io.emit('new_request', newData);
 
         res.json({ success: true });
-
     });
-
 });
 
-// ================= GET ALL =================
-app.get('/requests', (req, res) => {
-
-    db.all(`
-        SELECT *
-        FROM requests
-        ORDER BY id DESC
-    `, [], (err, rows) => {
-
-        if (err) return res.status(500).json({ error: err.message });
-
-        res.json(rows);
-
-    });
-
-});
-
-// ================= SOCKET =================
+// ================= SOCKET.IO =================
 io.on('connection', (socket) => {
 
+    console.log("Client connected");
+
+    // โหลดทั้งหมด
     socket.on('get_all_requests', () => {
 
         db.all(`
@@ -107,35 +113,43 @@ io.on('connection', (socket) => {
             ORDER BY id DESC
         `, [], (err, rows) => {
 
-            if (!err) socket.emit('all_requests', rows);
+            if (!err) {
+                socket.emit('all_requests', rows);
+            }
 
         });
 
     });
 
-    // 🔥 FIX: update status ต้อง broadcast + confirm
-    socket.on('update_status', ({ id, status }) => {
+    // อัปเดตสถานะ
+    socket.on('update_status', (data) => {
 
-        db.run(`
-            UPDATE requests
-            SET status = ?
-            WHERE id = ?
-        `, [status, id], function (err) {
+        const { id, status } = data;
 
-            if (err) return;
+        // ถ้าเสร็จ = ลบออก
+        if (status === 'done') {
 
-            // ส่งกลับ “ตัวอัปเดตจริง”
-            io.emit('status_updated', {
-                id,
-                status
+            db.run(`DELETE FROM requests WHERE id = ?`, [id], () => {
+                io.emit('remove_request', { id });
             });
 
-        });
+        } else {
 
+            db.run(
+                `UPDATE requests SET status = ? WHERE id = ?`,
+                [status, id],
+                () => {
+                    io.emit('status_updated', { id, status });
+                }
+            );
+        }
     });
 
 });
 
-server.listen(3000, () => {
-    console.log("Server running");
+// ================= START SERVER =================
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });

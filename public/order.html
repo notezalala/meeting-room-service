@@ -1,14 +1,9 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
-
 <meta charset="UTF-8">
-
-<title>Meeting Room Service</title>
-
+<title>Order</title>
 <link rel="stylesheet" href="style.css">
-
 </head>
 
 <body>
@@ -16,400 +11,209 @@
 <div class="container">
 
     <div class="header">
-
         ☕ Meeting Room Service
+        <div class="room-title" id="roomTitle"></div>
+    </div>
 
-        <div class="room-title"
-            id="roomTitle">
-        </div>
+    <!-- ================= NAME ================= -->
+    <div class="section">
+
+        <div class="title">ชื่อผู้สั่ง</div>
+
+        <input type="text"
+               id="customerName"
+               placeholder="กรอกชื่อผู้สั่ง..."
+               style="
+                    width:100%;
+                    padding:15px;
+                    border-radius:15px;
+                    border:1px solid #ccc;
+                    font-size:18px;
+                    box-sizing:border-box;
+               ">
 
     </div>
 
+    <!-- ================= DRINK ================= -->
     <div class="section">
 
-        <div class="title">
-            เลือกเครื่องดื่ม
-        </div>
+        <div class="title">เลือกเครื่องดื่ม</div>
 
         <div class="menu-grid">
 
             <div class="menu-card">
-
                 <img src="https://cdn-icons-png.flaticon.com/512/924/924514.png">
-
-                <div class="menu-name">
-                    Coffee
-                </div>
+                <div class="menu-name">Coffee</div>
 
                 <div class="counter">
-
-                    <button class="minus"
-                        onclick="decrease('coffee')">
-
-                        -
-
-                    </button>
-
-                    <div class="count"
-                        id="coffeeCount">
-
-                        0
-
-                    </div>
-
-                    <button class="plus"
-                        onclick="increase('coffee')">
-
-                        +
-
-                    </button>
-
+                    <button class="minus" onclick="change('coffee',-1)">-</button>
+                    <div id="coffeeCount">0</div>
+                    <button class="plus" onclick="change('coffee',1)">+</button>
                 </div>
-
             </div>
 
             <div class="menu-card">
-
                 <img src="https://cdn-icons-png.flaticon.com/512/3105/3105807.png">
-
-                <div class="menu-name">
-                    Water
-                </div>
+                <div class="menu-name">Water</div>
 
                 <div class="counter">
-
-                    <button class="minus"
-                        onclick="decrease('water')">
-
-                        -
-
-                    </button>
-
-                    <div class="count"
-                        id="waterCount">
-
-                        0
-
-                    </div>
-
-                    <button class="plus"
-                        onclick="increase('water')">
-
-                        +
-
-                    </button>
-
+                    <button class="minus" onclick="change('water',-1)">-</button>
+                    <div id="waterCount">0</div>
+                    <button class="plus" onclick="change('water',1)">+</button>
                 </div>
-
             </div>
 
             <div class="menu-card">
-
                 <img src="https://em-content.zobj.net/source/microsoft-teams/337/teacup-without-handle_1f375.png">
-
-                <div class="menu-name">
-                    Tea
-                </div>
+                <div class="menu-name">Tea</div>
 
                 <div class="counter">
-
-                    <button class="minus"
-                        onclick="decrease('tea')">
-
-                        -
-
-                    </button>
-
-                    <div class="count"
-                        id="teaCount">
-
-                        0
-
-                    </div>
-
-                    <button class="plus"
-                        onclick="increase('tea')">
-
-                        +
-
-                    </button>
-
+                    <button class="minus" onclick="change('tea',-1)">-</button>
+                    <div id="teaCount">0</div>
+                    <button class="plus" onclick="change('tea',1)">+</button>
                 </div>
-
             </div>
 
         </div>
 
     </div>
 
+    <!-- ================= TIME ================= -->
     <div class="section">
 
-        <div class="title">
-            เวลาเสิร์ฟ
-        </div>
+        <div class="title">เวลาเสิร์ฟ</div>
 
         <div class="time-grid">
-
-            <button class="time-btn active"
-                onclick="selectTime(this,'ตอนนี้')">
-
-                ตอนนี้
-
-            </button>
-
-            <button class="time-btn"
-                id="time15Btn">
-
-                Loading...
-
-            </button>
-
-            <button class="time-btn"
-                id="time30Btn">
-
-                Loading...
-
-            </button>
-
-            <button class="time-btn"
-                onclick="customTime()">
-
-                กำหนดเอง
-
-            </button>
-
+            <button class="time-btn active" onclick="selectTime(this,'ตอนนี้')">ตอนนี้</button>
+            <button class="time-btn" id="t15">Loading...</button>
+            <button class="time-btn" id="t30">Loading...</button>
+            <button class="time-btn" onclick="customTime()">กำหนดเอง</button>
         </div>
 
     </div>
 
+    <!-- ================= COMMENT ================= -->
     <div class="section">
 
-        <div class="title">
-            หมายเหตุ
-        </div>
+        <div class="title">หมายเหตุ</div>
 
-        <textarea id="comment"
-placeholder="ระบุเพิ่มเติม..."></textarea>
+        <textarea id="comment"></textarea>
 
     </div>
 
-    <button class="send-btn"
-        onclick="sendOrder()">
-
-        ส่งรายการ
-
-    </button>
+    <button class="send-btn" onclick="send()">ส่งรายการ</button>
 
 </div>
 
 <script>
 
-let coffee = 0;
-let water = 0;
-let tea = 0;
+let coffee=0, water=0, tea=0;
+let serve_time="ตอนนี้";
 
-let serve_time = "ตอนนี้";
+const room = new URLSearchParams(location.search).get('room');
+document.getElementById('roomTitle').innerText = room;
 
-const params =
-    new URLSearchParams(window.location.search);
+// ================= CHANGE =================
+function change(type,val){
 
-const room =
-    params.get('room');
+    if(type==='coffee') coffee=Math.max(0,coffee+val);
+    if(type==='water') water=Math.max(0,water+val);
+    if(type==='tea') tea=Math.max(0,tea+val);
 
-document.getElementById('roomTitle')
-.innerHTML = room;
-
-function updateUI(){
-
-    document.getElementById('coffeeCount')
-    .innerHTML = coffee;
-
-    document.getElementById('waterCount')
-    .innerHTML = water;
-
-    document.getElementById('teaCount')
-    .innerHTML = tea;
-
+    document.getElementById('coffeeCount').innerText=coffee;
+    document.getElementById('waterCount').innerText=water;
+    document.getElementById('teaCount').innerText=tea;
 }
 
-function increase(type){
-
-    if(type === 'coffee') coffee++;
-    if(type === 'water') water++;
-    if(type === 'tea') tea++;
-
-    updateUI();
-
-}
-
-function decrease(type){
-
-    if(type === 'coffee' && coffee > 0)
-        coffee--;
-
-    if(type === 'water' && water > 0)
-        water--;
-
-    if(type === 'tea' && tea > 0)
-        tea--;
-
-    updateUI();
-
-}
-
-function selectTime(button,time){
+// ================= TIME =================
+function selectTime(btn,time){
 
     document.querySelectorAll('.time-btn')
-    .forEach(btn=>{
+    .forEach(b=>b.classList.remove('active'));
 
-        btn.classList.remove('active');
-
-    });
-
-    button.classList.add('active');
+    btn.classList.add('active');
 
     serve_time = time;
-
 }
 
 function customTime(){
+    const t = prompt("ใส่เวลา เช่น 13:30");
+    if(t) serve_time = t;
+}
 
-    const time =
-        prompt("กรอกเวลา เช่น 13:30");
+// ================= FORMAT =================
+function format(d){
+    return String(d.getHours()).padStart(2,'0')+":"+String(d.getMinutes()).padStart(2,'0');
+}
 
-    if(time){
+// ================= LOAD TIME =================
+window.onload=function(){
 
-        serve_time = time;
+    const now=new Date();
 
+    const t15 = document.getElementById('t15');
+    const t30 = document.getElementById('t30');
+
+    t15.innerText = format(new Date(now.getTime()+15*60000));
+    t30.innerText = format(new Date(now.getTime()+30*60000));
+
+    t15.onclick=()=>selectTime(t15,t15.innerText);
+    t30.onclick=()=>selectTime(t30,t30.innerText);
+}
+
+// ================= SEND (FIX HERE) =================
+async function send(){
+
+    const name = document.getElementById('customerName').value.trim();
+
+    // ❌ ไม่มีชื่อ
+    if(!name){
+        alert("กรุณากรอกชื่อผู้สั่ง");
+        return;
     }
 
-}
-
-function generateDynamicTimes(){
-
-    const now = new Date();
-
-    const plus15 =
-        new Date(now.getTime() + 15 * 60000);
-
-    const plus30 =
-        new Date(now.getTime() + 30 * 60000);
-
-    const time15 =
-        formatTime(plus15);
-
-    const time30 =
-        formatTime(plus30);
-
-    const btn15 =
-        document.getElementById('time15Btn');
-
-    const btn30 =
-        document.getElementById('time30Btn');
-
-    btn15.innerText = time15;
-
-    btn30.innerText = time30;
-
-    btn15.onclick = function(){
-
-        selectTime(btn15,time15);
-
-    };
-
-    btn30.onclick = function(){
-
-        selectTime(btn30,time30);
-
-    };
-
-}
-
-function formatTime(date){
-
-    const hh =
-        String(date.getHours())
-        .padStart(2,'0');
-
-    const mm =
-        String(date.getMinutes())
-        .padStart(2,'0');
-
-    return `${hh}:${mm}`;
-
-}
-
-window.onload = function(){
-
-    generateDynamicTimes();
-
-}
-
-async function sendOrder(){
+    // ❌ ไม่มีรายการเลย
+    if(coffee === 0 && water === 0 && tea === 0){
+        alert("กรุณาเลือกเครื่องดื่มอย่างน้อย 1 รายการ");
+        return;
+    }
 
     try{
 
-        const response =
-            await fetch('/request',{
-
+        await fetch('/request',{
             method:'POST',
-
-            headers:{
-                'Content-Type':'application/json'
-            },
-
+            headers:{'Content-Type':'application/json'},
             body:JSON.stringify({
-
-                room: room,
-
-                coffee: coffee,
-
-                water: water,
-
-                tea: tea,
-
-                serve_time: serve_time,
-
-                comment:
-                    document
-                    .getElementById('comment')
-                    .value
-
+                room,
+                customer_name: name,
+                coffee,
+                water,
+                tea,
+                serve_time,
+                comment: document.getElementById('comment').value
             })
-
         });
 
-        const result =
-            await response.json();
+        alert("ส่งรายการสำเร็จ");
 
-        if(result.success){
+        // reset
+        coffee = 0;
+        water = 0;
+        tea = 0;
+        serve_time = "ตอนนี้";
 
-            alert('ส่งรายการสำเร็จ');
+        document.getElementById('comment').value = '';
+        document.getElementById('customerName').value = '';
 
-            coffee = 0;
-            water = 0;
-            tea = 0;
-
-            updateUI();
-
-            document
-            .getElementById('comment')
-            .value = '';
-
-        }
+        change('coffee',0);
 
     }catch(err){
-
         console.log(err);
-
-        alert('Server Error');
-
+        alert("เกิดข้อผิดพลาด");
     }
-
 }
 
 </script>
 
 </body>
-
 </html>
