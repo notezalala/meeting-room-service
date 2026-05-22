@@ -5,625 +5,199 @@
 
 <meta charset="UTF-8">
 
-<title>Meeting Room Service</title>
+<title>Dashboard</title>
 
-<style>
+<link rel="stylesheet" href="style.css">
 
-body{
-    margin:0;
-    font-family:Arial;
-    background:#f3f4f6;
-}
-
-.container{
-    max-width:700px;
-    margin:auto;
-    padding:20px;
-}
-
-.header{
-    background:#071326;
-    color:white;
-    padding:25px;
-    border-radius:20px;
-    margin-bottom:20px;
-}
-
-.room-title{
-    font-size:42px;
-    margin-top:10px;
-    font-weight:bold;
-}
-
-.section{
-    background:white;
-    padding:25px;
-    border-radius:20px;
-    margin-bottom:20px;
-    box-shadow:0 0 10px rgba(0,0,0,0.08);
-}
-
-.title{
-    font-size:28px;
-    font-weight:bold;
-    margin-bottom:20px;
-}
-
-.menu-grid{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:20px;
-}
-
-.menu-card{
-    border:2px solid #ddd;
-    border-radius:20px;
-    padding:20px;
-    text-align:center;
-}
-
-.menu-card img{
-    width:90px;
-    height:90px;
-    object-fit:contain;
-}
-
-.menu-name{
-    font-size:28px;
-    margin-top:15px;
-    margin-bottom:15px;
-}
-
-.counter{
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    gap:15px;
-}
-
-.counter button{
-    width:45px;
-    height:45px;
-    border:none;
-    border-radius:12px;
-    font-size:26px;
-    color:white;
-    cursor:pointer;
-}
-
-.minus{
-    background:#d97706;
-}
-
-.plus{
-    background:#2563eb;
-}
-
-.count{
-    font-size:30px;
-    width:40px;
-}
-
-.time-grid{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:15px;
-}
-
-.time-btn{
-    padding:18px;
-    border:none;
-    border-radius:15px;
-    background:#e5e7eb;
-    font-size:22px;
-    cursor:pointer;
-}
-
-.time-btn.active{
-    background:#2563eb;
-    color:white;
-}
-
-textarea{
-
-    width:100%;
-    height:120px;
-
-    box-sizing:border-box;
-
-    border-radius:15px;
-    border:1px solid #ccc;
-
-    padding:15px;
-
-    font-size:18px;
-
-    resize:none;
-
-}
-
-.send-btn{
-    width:100%;
-    border:none;
-    background:#2563eb;
-    color:white;
-    padding:22px;
-    border-radius:18px;
-    font-size:30px;
-    cursor:pointer;
-}
-
-.send-btn:hover{
-    background:#1d4ed8;
-}
-
-.footer{
-    text-align:center;
-    margin-top:20px;
-    color:#666;
-}
-
-</style>
+<script src="/socket.io/socket.io.js"></script>
 
 </head>
 
-<body>
+<body class="dashboard-body">
 
-<div class="container">
+<div class="dashboard-header">
 
-    <div class="header">
-
-        ☕ Meeting Room Service
-
-        <div class="room-title"
-            id="roomTitle">
-        </div>
-
-    </div>
-
-    <div class="section">
-
-        <div class="title">
-            เลือกเครื่องดื่ม
-        </div>
-
-        <div class="menu-grid">
-
-            <div class="menu-card">
-
-                <img src="https://cdn-icons-png.flaticon.com/512/924/924514.png">
-
-                <div class="menu-name">
-                    Coffee
-                </div>
-
-                <div class="counter">
-
-                    <button class="minus"
-                        onclick="decrease('coffee')">
-
-                        -
-
-                    </button>
-
-                    <div class="count"
-                        id="coffeeCount">
-
-                        0
-
-                    </div>
-
-                    <button class="plus"
-                        onclick="increase('coffee')">
-
-                        +
-
-                    </button>
-
-                </div>
-
-            </div>
-
-            <div class="menu-card">
-
-                <img src="https://cdn-icons-png.flaticon.com/512/3105/3105807.png">
-
-                <div class="menu-name">
-                    Water
-                </div>
-
-                <div class="counter">
-
-                    <button class="minus"
-                        onclick="decrease('water')">
-
-                        -
-
-                    </button>
-
-                    <div class="count"
-                        id="waterCount">
-
-                        0
-
-                    </div>
-
-                    <button class="plus"
-                        onclick="increase('water')">
-
-                        +
-
-                    </button>
-
-                </div>
-
-            </div>
-
-            <div class="menu-card">
-
-                <img src="https://cdn-icons-png.flaticon.com/512/415/415733.png">
-
-                <div class="menu-name">
-                    Tea
-                </div>
-
-                <div class="counter">
-
-                    <button class="minus"
-                        onclick="decrease('tea')">
-
-                        -
-
-                    </button>
-
-                    <div class="count"
-                        id="teaCount">
-
-                        0
-
-                    </div>
-
-                    <button class="plus"
-                        onclick="increase('tea')">
-
-                        +
-
-                    </button>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-    <div class="section">
-
-        <div class="title">
-            เวลาเสิร์ฟ
-        </div>
-
-<div class="time-grid">
-
-    <button class="time-btn active"
-        onclick="selectTime(this,'ตอนนี้')">
-
-        ตอนนี้
-
-    </button>
-
-    <button class="time-btn"
-        id="time15Btn">
-
-        Loading...
-
-    </button>
-
-    <button class="time-btn"
-        id="time30Btn">
-
-        Loading...
-
-    </button>
-
-    <button class="time-btn"
-        onclick="customTime()">
-
-        กำหนดเอง
-
-    </button>
+    ☕ Housekeeping Dashboard
 
 </div>
 
-    </div>
-
-    <div class="section">
-
-        <div class="title">
-            หมายเหตุ
-        </div>
-
-        <textarea id="comment"
-placeholder="ระบุเพิ่มเติม..."></textarea>
-
-    </div>
-
-    <button class="send-btn"
-        onclick="sendOrder()">
-
-        ส่งรายการ
-
-    </button>
-
-    <div class="footer">
-        © 2024 Meeting Room Service
-    </div>
+<div class="dashboard-container"
+    id="orders">
 
 </div>
 
 <script>
 
-let coffee = 0;
-let water = 0;
-let tea = 0;
+const socket = io();
 
-let serve_time = "ตอนนี้";
+loadOldOrders();
 
-const params =
-    new URLSearchParams(window.location.search);
+socket.on('new_request', (data)=>{
 
-const room =
-    params.get('room');
+    addCard(data);
 
-document.getElementById('roomTitle')
-.innerHTML = room;
+});
 
-function generateDynamicTimes(){
-
-    const now = new Date();
-
-    const plus15 =
-        new Date(now.getTime() + 15 * 60000);
-
-    const plus30 =
-        new Date(now.getTime() + 30 * 60000);
-
-    const time15 =
-        formatTime(plus15);
-
-    const time30 =
-        formatTime(plus30);
-
-    const btn15 =
-        document.getElementById('time15Btn');
-
-    const btn30 =
-        document.getElementById('time30Btn');
-
-    btn15.innerText = time15;
-
-    btn30.innerText = time30;
-
-    btn15.onclick = function(){
-
-        selectTime(btn15,time15);
-
-    };
-
-    btn30.onclick = function(){
-
-        selectTime(btn30,time30);
-
-    };
-
-}
-
-function formatTime(date){
-
-    const hh =
-        String(date.getHours())
-        .padStart(2,'0');
-
-    const mm =
-        String(date.getMinutes())
-        .padStart(2,'0');
-
-    return `${hh}:${mm}`;
-
-}
-window.onload = function(){
-
-    generateDynamicTimes();
-
-}
-
-function updateUI(){
-   function generateDynamicTimes(){
-
-    const now = new Date();
-
-    const plus15 =
-        new Date(now.getTime() + 15 * 60000);
-
-    const plus30 =
-        new Date(now.getTime() + 30 * 60000);
-
-    const time15 =
-        formatTime(plus15);
-
-    const time30 =
-        formatTime(plus30);
-
-    const btn15 =
-        document.getElementById('time15Btn');
-
-    const btn30 =
-        document.getElementById('time30Btn');
-
-    btn15.innerText = time15;
-
-    btn30.innerText = time30;
-
-    btn15.onclick = function(){
-
-        selectTime(btn15,time15);
-
-    };
-
-    btn30.onclick = function(){
-
-        selectTime(btn30,time30);
-
-    };
-
-}
-
-function formatTime(date){
-
-    const hh =
-        String(date.getHours())
-        .padStart(2,'0');
-
-    const mm =
-        String(date.getMinutes())
-        .padStart(2,'0');
-
-    return `${hh}:${mm}`;
-
-}
-
-    document.getElementById('coffeeCount')
-    .innerHTML = coffee;
-
-    document.getElementById('waterCount')
-    .innerHTML = water;
-
-    document.getElementById('teaCount')
-    .innerHTML = tea;
-
-}
-
-function increase(type){
-
-    if(type === 'coffee') coffee++;
-    if(type === 'water') water++;
-    if(type === 'tea') tea++;
-
-    updateUI();
-
-}
-
-function decrease(type){
-
-    if(type === 'coffee' && coffee > 0)
-        coffee--;
-
-    if(type === 'water' && water > 0)
-        water--;
-
-    if(type === 'tea' && tea > 0)
-        tea--;
-
-    updateUI();
-
-}
-
-function selectTime(button,time){
-
-    document.querySelectorAll('.time-btn')
-    .forEach(btn=>{
-
-        btn.classList.remove('active');
-
-    });
-
-    button.classList.add('active');
-
-    serve_time = time;
-
-}
-
-function customTime(){
-
-    const time =
-        prompt("กรอกเวลา เช่น 13:30");
-
-    if(time){
-
-        serve_time = time;
-
-        document.querySelectorAll('.time-btn')
-        .forEach(btn=>{
-
-            btn.classList.remove('active');
-
-        });
-
-    }
-
-}
-
-async function sendOrder(){
+async function loadOldOrders(){
 
     try{
 
         const response =
-            await fetch('/request',{
+            await fetch('/requests');
 
-            method:'POST',
-
-            headers:{
-                'Content-Type':'application/json'
-            },
-
-            body:JSON.stringify({
-
-                room: room,
-
-                coffee: coffee,
-
-                water: water,
-
-                tea: tea,
-
-                serve_time: serve_time,
-
-                comment:
-                    document
-                    .getElementById('comment')
-                    .value
-
-            })
-
-        });
-
-        const result =
+        const orders =
             await response.json();
 
-        if(result.success){
+        orders.forEach(order => {
 
-            alert('ส่งรายการสำเร็จ');
+            addCard({
 
-            coffee = 0;
-            water = 0;
-            tea = 0;
+                id: order.id,
 
-            updateUI();
+                room: order.room_name,
 
-            document
-            .getElementById('comment')
-            .value = '';
+                coffee: order.coffee,
 
-        }
+                water: order.water,
+
+                tea: order.tea,
+
+                serve_time: order.serve_time,
+
+                comment: order.comment,
+
+                status: order.status
+
+            });
+
+        });
 
     }catch(err){
 
         console.log(err);
 
-        alert('Server Error');
+    }
+
+}
+
+function addCard(data){
+
+    if(document.getElementById(`card-${data.id}`))
+        return;
+
+    let statusClass = 'pending';
+
+    let statusText = 'รอดำเนินการ';
+
+    if(data.status === 'PREPARING'){
+
+        statusClass = 'preparing';
+
+        statusText = 'กำลังเตรียม';
 
     }
+
+    if(data.status === 'DONE'){
+
+        statusClass = 'done';
+
+        statusText = 'เสร็จสิ้น';
+
+    }
+
+    const div = document.createElement('div');
+
+    div.className = "card";
+
+    div.id = `card-${data.id}`;
+
+    div.innerHTML = `
+
+        <div>
+
+            <div class="room">
+
+                ${data.room}
+
+            </div>
+
+            <div class="info">
+
+                ☕ Coffee : ${data.coffee}<br>
+
+                💧 Water : ${data.water}<br>
+
+                🍵 Tea : ${data.tea}
+
+                <br><br>
+
+                🕒 เวลาเสิร์ฟ :
+                ${data.serve_time}
+
+                <br><br>
+
+                📝 หมายเหตุ :
+                ${data.comment || '-'}
+
+            </div>
+
+            <div class="status ${statusClass}"
+                id="status-${data.id}">
+
+                ${statusText}
+
+            </div>
+
+        </div>
+
+        <div class="actions">
+
+            <button class="btn-preparing"
+                onclick="setPreparing(${data.id})">
+
+                กำลังเตรียม
+
+            </button>
+
+            <button class="btn-done"
+                onclick="setDone(${data.id})">
+
+                เสร็จสิ้น
+
+            </button>
+
+        </div>
+
+    `;
+
+    document.getElementById('orders')
+        .prepend(div);
+
+}
+
+function setPreparing(id){
+
+    const status =
+        document.getElementById(`status-${id}`);
+
+    status.innerHTML =
+        "กำลังเตรียม";
+
+    status.className =
+        "status preparing";
+
+}
+
+function setDone(id){
+
+    const status =
+        document.getElementById(`status-${id}`);
+
+    status.innerHTML =
+        "เสร็จสิ้น";
+
+    status.className =
+        "status done";
 
 }
 
