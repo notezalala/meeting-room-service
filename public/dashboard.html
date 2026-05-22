@@ -29,13 +29,15 @@ socket.on('all_requests', (list) => {
     const container = document.getElementById('orders');
     container.innerHTML = "";
 
-    // 🔥 สำคัญ: ใช้ลำดับจาก server เท่านั้น
-    list.forEach(addCard);
+    // 🔥 IMPORTANT FIX: FORCE NEWEST FIRST
+    list
+        .sort((a, b) => b.id - a.id)
+        .forEach(addCard);
 
 });
 
 // =====================
-// REALTIME NEW ORDER
+// REALTIME
 // =====================
 socket.on('new_request', (data) => {
 
@@ -46,7 +48,7 @@ socket.on('new_request', (data) => {
 });
 
 // =====================
-// ADD CARD
+// CARD
 // =====================
 function addCard(data){
 
@@ -88,12 +90,11 @@ function addCard(data){
         </div>
     `;
 
-    // 🔥 NEW ALWAYS ON TOP
     document.getElementById('orders').prepend(div);
 }
 
 // =====================
-// STATUS TEXT
+// STATUS
 // =====================
 function getStatus(status){
 

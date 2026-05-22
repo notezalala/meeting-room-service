@@ -68,7 +68,7 @@ app.post('/request', (req, res) => {
 
         const newData = {
             id: this.lastID,
-            room: room,
+            room,
             coffee,
             water,
             tea,
@@ -80,12 +80,13 @@ app.post('/request', (req, res) => {
         io.emit('new_request', newData);
 
         res.json({ success: true });
+
     });
 
 });
 
 // =========================
-// GET ORDERS (LATEST FIRST)
+// GET ALL (IMPORTANT FIX)
 // =========================
 app.get('/requests', (req, res) => {
 
