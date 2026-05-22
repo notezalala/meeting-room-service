@@ -20,35 +20,37 @@
 const socket = io();
 
 // =====================
-// LOAD DATA
+// LOAD DATA (LOCK ORDER)
 // =====================
 socket.emit('get_all_requests');
 
 socket.on('all_requests', (list) => {
 
     const container = document.getElementById('orders');
+
+    // 🔥 HARD RESET DOM
     container.innerHTML = "";
 
-    // 🔥 IMPORTANT FIX: FORCE NEWEST FIRST
-    list
-        .sort((a, b) => b.id - a.id)
-        .forEach(addCard);
+    // ❗ IMPORTANT: NO SORT, NO CHANGE ORDER
+    for (let i = 0; i < list.length; i++) {
+        addCard(list[i]);
+    }
 
 });
 
 // =====================
-// REALTIME
+// REALTIME NEW ORDER
 // =====================
 socket.on('new_request', (data) => {
 
-    if(document.getElementById(`card-${data.id}`)) return;
+    if (document.getElementById(`card-${data.id}`)) return;
 
     addCard(data);
 
 });
 
 // =====================
-// CARD
+// ADD CARD
 // =====================
 function addCard(data){
 
@@ -90,11 +92,12 @@ function addCard(data){
         </div>
     `;
 
+    // 🔥 ALWAYS NEW ON TOP
     document.getElementById('orders').prepend(div);
 }
 
 // =====================
-// STATUS
+// STATUS TEXT
 // =====================
 function getStatus(status){
 

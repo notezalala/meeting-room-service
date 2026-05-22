@@ -86,7 +86,7 @@ app.post('/request', (req, res) => {
 });
 
 // =========================
-// GET ALL (IMPORTANT FIX)
+// GET ALL (LOCK DESC BY ID)
 // =========================
 app.get('/requests', (req, res) => {
 
@@ -120,19 +120,7 @@ io.on('connection', (socket) => {
         `, [], (err, rows) => {
 
             if (!err) {
-
-                const fixed = rows.map(r => ({
-                    id: r.id,
-                    room: r.room_name,
-                    coffee: r.coffee,
-                    water: r.water,
-                    tea: r.tea,
-                    serve_time: r.serve_time,
-                    comment: r.comment,
-                    status: r.status
-                }));
-
-                socket.emit('all_requests', fixed);
+                socket.emit('all_requests', rows);
             }
 
         });
