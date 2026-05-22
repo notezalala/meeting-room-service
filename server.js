@@ -1,21 +1,11 @@
 const express = require('express');
+
 const http = require('http');
+
 const { Server } = require('socket.io');
+
 const sqlite3 = require('sqlite3').verbose();
 
-const db = new sqlite3.Database('./meeting.db', (err) => {
-
-    if(err){
-
-        console.log(err);
-
-    }else{
-
-        console.log("SQLite Connected");
-
-    }
-
-});
 const cors = require('cors');
 
 const app = express();
@@ -30,11 +20,24 @@ app.use(express.json());
 
 app.use(express.static('public'));
 
-const db = new sqlite3.Database('./meeting.db');
+const db = new sqlite3.Database('./meeting.db', (err) => {
+
+    if(err){
+
+        console.log(err);
+
+    }else{
+
+        console.log("SQLite Connected");
+
+    }
+
+});
 
 db.serialize(() => {
 
     db.run(`
+
         CREATE TABLE IF NOT EXISTS requests (
 
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,26 +59,28 @@ db.serialize(() => {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 
         )
+
     `);
 
 });
 
 app.post('/request', (req, res) => {
 
-    console.log(req.body);
-
     const {
+
         room,
         coffee,
         water,
         tea,
         serve_time,
         comment
+
     } = req.body;
 
     db.run(
 
         `
+
         INSERT INTO requests
         (
             room_name,
@@ -87,15 +92,18 @@ app.post('/request', (req, res) => {
         )
 
         VALUES (?, ?, ?, ?, ?, ?)
+
         `,
 
         [
+
             room,
             coffee,
             water,
             tea,
             serve_time,
             comment
+
         ],
 
         function(err){
@@ -105,7 +113,9 @@ app.post('/request', (req, res) => {
                 console.log(err);
 
                 return res.status(500).json({
+
                     error: err.message
+
                 });
 
             }
@@ -124,7 +134,9 @@ app.post('/request', (req, res) => {
             });
 
             res.json({
+
                 success:true
+
             });
 
         }
