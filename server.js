@@ -1,86 +1,55 @@
 const express = require('express');
-
 const http = require('http');
-
 const { Server } = require('socket.io');
-
 const sqlite3 = require('sqlite3').verbose();
-
 const cors = require('cors');
 
 const app = express();
-
 const server = http.createServer(app);
-
 const io = new Server(server);
 
 app.use(cors());
-
 app.use(express.json());
-
 app.use(express.static('public'));
 
+// =========================
+// SQLite DB
+// =========================
 const db = new sqlite3.Database('./meeting.db', (err) => {
-
-    if(err){
-
+    if (err) {
         console.log(err);
-
-    }else{
-
+    } else {
         console.log("SQLite Connected");
-
     }
-
 });
 
+// =========================
+// Create Table
+// =========================
 db.serialize(() => {
-
     db.run(`
-
         CREATE TABLE IF NOT EXISTS requests (
-
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
             room_name TEXT,
-
             coffee INTEGER,
-
             water INTEGER,
-
             tea INTEGER,
-
             serve_time TEXT,
-
             comment TEXT,
-
             status TEXT DEFAULT 'PENDING',
-
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-
         )
-
     `);
-
 });
 
+// =========================
+// POST NEW REQUEST
+// =========================
 app.post('/request', (req, res) => {
 
-    const {
+    const { room, coffee, water, tea, serve_time, comment } = req.body;
 
-        room,
-        coffee,
-        water,
-        tea,
-        serve_time,
-        comment
-
-    } = req.body;
-
-    db.run(
-
-        `
-
+    db.run(`
         INSERT INTO requests
         (
             room_name,
@@ -88,109 +57,118 @@ app.post('/request', (req, res) => {
             water,
             tea,
             serve_time,
-            comment
+            comment,
+            status
         )
+        VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
+    `,
+    [room, coffee, water, tea, serve_time, comment],
+    function (err) {
 
-        VALUES (?, ?, ?, ?, ?, ?)
+        if (err) {
+            console.log(err);
+            return res.status(500).json({ error: err.message });
+        }
 
-        `,
-
-        [
-
+        const newData = {
+            id: this.lastID,
             room,
             coffee,
             water,
             tea,
             serve_time,
-            comment
+            comment,
+            status: 'PENDING'
+        };
 
-        ],
+        io.emit('new_request', newData);
 
-        function(err){
+        res.json({ success: true });
 
-            if(err){
-
-                console.log(err);
-
-                return res.status(500).json({
-
-                    error: err.message
-
-                });
-
-            }
-
-            io.emit('new_request', {
-
-                id: this.lastID,
-
-                room,
-                coffee,
-                water,
-                tea,
-                serve_time,
-                comment
-
-            });
-
-            res.json({
-
-                success:true
-
-            });
-
-        }
-
-    );
+    });
 
 });
+
+// =========================
+// GET ALL REQUESTS (REST API)
+// =========================
 app.get('/requests', (req, res) => {
 
-    db.all(
-
-        `
-
+    db.all(`
         SELECT *
         FROM requests
+        ORDER BY created_at DESC
+    `, [], (err, rows) => {
 
-        ORDER BY id DESC
-
-        `,
-
-        [],
-
-        (err, rows) => {
-
-            if(err){
-
-                return res.status(500).json({
-
-                    error: err.message
-
-                });
-
-            }
-
-            res.json(rows);
-
+        if (err) {
+            return res.status(500).json({ error: err.message });
         }
 
-    );
+        res.json(rows);
+
+    });
 
 });
-io.on('connection', () => {
+
+// =========================
+// SOCKET IO
+// =========================
+io.on('connection', (socket) => {
 
     console.log('Client Connected');
 
+    // ส่งข้อมูลทั้งหมดตอนโหลดหน้า
+    socket.on('get_all_requests', () => {
+
+        db.all(`
+            SELECT *
+            FROM requests
+            ORDER BY created_at DESC
+        `, [], (err, rows) => {
+
+            if (!err) {
+                socket.emit('all_requests', rows);
+            }
+
+        });
+
+    });
+
 });
 
-const PORT =
-    process.env.PORT || 3000;
+// =========================
+// CLEAR AT MIDNIGHT
+// =========================
+function clearAtMidnight() {
+
+    const now = new Date();
+    const next = new Date();
+    next.setHours(24, 0, 0, 0);
+
+    const ms = next - now;
+
+    setTimeout(() => {
+
+        db.run(`DELETE FROM requests`, [], (err) => {
+            if (!err) {
+                console.log("Cleared all requests at midnight");
+                io.emit('clear_all');
+            }
+        });
+
+        clearAtMidnight();
+
+    }, ms);
+
+}
+
+clearAtMidnight();
+
+// =========================
+// START SERVER
+// =========================
+const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
-
-    console.log(
-        `Server Running On Port ${PORT}`
-    );
-
+    console.log(`Server Running On Port ${PORT}`);
 });
