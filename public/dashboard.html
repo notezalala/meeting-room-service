@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>Dashboard</title>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<style>
+
+body{
+    margin:0;
+    font-family:Arial;
+    background:#071326;
+    color:white;
+}
+
+.header{
+    padding:20px;
+    font-size:32px;
+    font-weight:bold;
+}
+
+.container{
+    padding:20px;
+}
+
+.card{
+
+    background:#0d1b33;
+    border-radius:20px;
+    padding:20px;
+    margin-bottom:20px;
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+
+    box-shadow:0 0 10px rgba(0,0,0,0.3);
+
+}
+
+.room{
+    font-size:28px;
+    color:#4ea1ff;
+    margin-bottom:10px;
+}
+
+.info{
+    font-size:22px;
+    line-height:40px;
+}
+
+.status{
+    margin-top:10px;
+    padding:10px 20px;
+    border-radius:20px;
+    display:inline-block;
+    font-weight:bold;
+}
+
+.pending{
+    background:#204a87;
+}
+
+.preparing{
+    background:#9c640c;
+}
+
+.done{
+    background:#1e8449;
+}
+
+.actions button{
+
+    border:none;
+    padding:15px 25px;
+    border-radius:15px;
+    margin:5px;
+    cursor:pointer;
+    font-size:18px;
+    color:white;
+
+}
+
+.btn-preparing{
+    background:#2563eb;
+}
+
+.btn-done{
+    background:#22c55e;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+☕ Housekeeping Dashboard
+</div>
+
+<div class="container" id="orders"></div>
+
+<script>
+
+const socket = io();
+
+socket.on('new_request', (data)=>{
+
+    addCard(data);
+
+});
+
+function addCard(data){
+
+    const div = document.createElement('div');
+
+    div.className = "card";
+
+    div.innerHTML = `
+
+        <div>
+
+            <div class="room">
+                ${data.room}
+            </div>
+
+            <div class="info">
+
+                ☕ Coffee : ${data.coffee}<br>
+
+                💧 Water : ${data.water}<br>
+
+                🍵 Tea : ${data.tea}
+
+                <br><br>
+
+                🕒 เวลาเสิร์ฟ :
+                ${data.serve_time}
+
+                <br><br>
+
+                📝 หมายเหตุ :
+                ${data.comment || '-'}
+
+            </div>
+
+            <div class="status pending"
+                id="status-${data.id}">
+
+                รอดำเนินการ
+
+            </div>
+
+        </div>
+
+        <div class="actions">
+
+            <button class="btn-preparing"
+                onclick="setPreparing(${data.id})">
+
+                กำลังเตรียม
+
+            </button>
+
+            <button class="btn-done"
+                onclick="setDone(${data.id})">
+
+                เสร็จสิ้น
+
+            </button>
+
+        </div>
+
+    `;
+
+    document.getElementById('orders')
+        .prepend(div);
+
+}
+
+function setPreparing(id){
+
+    const status =
+        document.getElementById(`status-${id}`);
+
+    status.innerHTML =
+        "กำลังเตรียม";
+
+    status.className =
+        "status preparing";
+
+}
+
+function setDone(id){
+
+    const status =
+        document.getElementById(`status-${id}`);
+
+    status.innerHTML =
+        "เสร็จสิ้น";
+
+    status.className =
+        "status done";
+
+}
+
+</script>
+
+</body>
+
+</html>
