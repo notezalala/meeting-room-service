@@ -7,106 +7,25 @@
 
 <title>Dashboard</title>
 
+<link rel="stylesheet" href="style.css">
+
 <script src="/socket.io/socket.io.js"></script>
-
-<style>
-
-body{
-    margin:0;
-    font-family:Arial;
-    background:#071326;
-    color:white;
-}
-
-.header{
-    padding:20px;
-    font-size:32px;
-    font-weight:bold;
-}
-
-.container{
-    padding:20px;
-}
-
-.card{
-
-    background:#0d1b33;
-    border-radius:20px;
-    padding:20px;
-    margin-bottom:20px;
-
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-
-    box-shadow:0 0 10px rgba(0,0,0,0.3);
-
-}
-
-.room{
-    font-size:28px;
-    color:#4ea1ff;
-    margin-bottom:10px;
-}
-
-.info{
-    font-size:22px;
-    line-height:40px;
-}
-
-.status{
-    margin-top:10px;
-    padding:10px 20px;
-    border-radius:20px;
-    display:inline-block;
-    font-weight:bold;
-}
-
-.pending{
-    background:#204a87;
-}
-
-.preparing{
-    background:#9c640c;
-}
-
-.done{
-    background:#1e8449;
-}
-
-.actions button{
-
-    border:none;
-    padding:15px 25px;
-    border-radius:15px;
-    margin:5px;
-    cursor:pointer;
-    font-size:18px;
-    color:white;
-
-}
-
-.btn-preparing{
-    background:#2563eb;
-}
-
-.btn-done{
-    background:#22c55e;
-}
-
-</style>
 
 </head>
 
-<body>
+<body class="dashboard-body">
 
-<div class="header">
-☕ Housekeeping Dashboard
+<div class="dashboard-header">
+
+    ☕ Housekeeping Dashboard
+
 </div>
 
-<div class="container" id="orders"></div>
+<div class="dashboard-container"
+    id="orders">
 
-<script>
+</div>
+
 <script>
 
 const socket = io();
@@ -121,33 +40,43 @@ socket.on('new_request', (data)=>{
 
 async function loadOldOrders(){
 
-    const response =
-        await fetch('/requests');
+    try{
 
-    const orders =
-        await response.json();
+        const response =
+            await fetch('/requests');
 
-    orders.forEach(order => {
+        const orders =
+            await response.json();
 
-        addCard({
+        orders.forEach(order => {
 
-            id: order.id,
+            addCard({
 
-            room: order.room_name,
+                id: order.id,
 
-            coffee: order.coffee,
+                room: order.room_name,
 
-            water: order.water,
+                coffee: order.coffee,
 
-            tea: order.tea,
+                water: order.water,
 
-            serve_time: order.serve_time,
+                tea: order.tea,
 
-            comment: order.comment
+                serve_time: order.serve_time,
+
+                comment: order.comment,
+
+                status: order.status
+
+            });
 
         });
 
-    });
+    }catch(err){
+
+        console.log(err);
+
+    }
 
 }
 
@@ -155,6 +84,26 @@ function addCard(data){
 
     if(document.getElementById(`card-${data.id}`))
         return;
+
+    let statusClass = 'pending';
+
+    let statusText = 'รอดำเนินการ';
+
+    if(data.status === 'PREPARING'){
+
+        statusClass = 'preparing';
+
+        statusText = 'กำลังเตรียม';
+
+    }
+
+    if(data.status === 'DONE'){
+
+        statusClass = 'done';
+
+        statusText = 'เสร็จสิ้น';
+
+    }
 
     const div = document.createElement('div');
 
@@ -167,7 +116,9 @@ function addCard(data){
         <div>
 
             <div class="room">
+
                 ${data.room}
+
             </div>
 
             <div class="info">
@@ -190,10 +141,10 @@ function addCard(data){
 
             </div>
 
-            <div class="status pending"
+            <div class="status ${statusClass}"
                 id="status-${data.id}">
 
-                รอดำเนินการ
+                ${statusText}
 
             </div>
 
