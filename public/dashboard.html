@@ -29,19 +29,24 @@ socket.on('all_requests', (list) => {
     const container = document.getElementById('orders');
     container.innerHTML = "";
 
-    list.forEach(addCard);
+    // 🔥 FORCE newest first
+    list.sort((a,b) => b.id - a.id).forEach(addCard);
 
 });
 
 // =====================
-// NEW ORDER REALTIME
+// REALTIME NEW ORDER
 // =====================
 socket.on('new_request', (data) => {
+
+    if(document.getElementById(`card-${data.id}`)) return;
+
     addCard(data);
+
 });
 
 // =====================
-// CARD
+// ADD CARD
 // =====================
 function addCard(data){
 
@@ -65,7 +70,7 @@ function addCard(data){
             </div>
 
             <div class="status pending" id="status-${data.id}">
-                ${getStatusText(data.status)}
+                ${getStatus(data.status)}
             </div>
 
         </div>
@@ -89,7 +94,7 @@ function addCard(data){
 // =====================
 // STATUS TEXT
 // =====================
-function getStatusText(status){
+function getStatus(status){
 
     if(status === 'preparing') return 'กำลังเตรียม';
     if(status === 'done') return 'เสร็จสิ้น';
@@ -107,7 +112,7 @@ function setPreparing(id){
         status: 'preparing'
     });
 
-    updateUI(id, 'preparing', 'กำลังเตรียม');
+    updateUI(id,'preparing','กำลังเตรียม');
 }
 
 function setDone(id){
@@ -117,10 +122,10 @@ function setDone(id){
         status: 'done'
     });
 
-    updateUI(id, 'done', 'เสร็จสิ้น');
+    updateUI(id,'done','เสร็จสิ้น');
 }
 
-function updateUI(id, cls, text){
+function updateUI(id,cls,text){
 
     const el = document.getElementById(`status-${id}`);
 

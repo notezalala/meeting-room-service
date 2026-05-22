@@ -29,7 +29,7 @@ app.get('*', (req, res) => {
 });
 
 // =========================
-// SQLite
+// DB
 // =========================
 const db = new sqlite3.Database('./meeting.db');
 
@@ -64,9 +64,7 @@ app.post('/request', (req, res) => {
     [room, coffee, water, tea, serve_time, comment],
     function (err) {
 
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
+        if (err) return res.status(500).json({ error: err.message });
 
         const newData = {
             id: this.lastID,
@@ -82,13 +80,11 @@ app.post('/request', (req, res) => {
         io.emit('new_request', newData);
 
         res.json({ success: true });
-
     });
-
 });
 
 // =========================
-// GET ALL ORDER (DESC)
+// GET ALL (LATEST FIRST)
 // =========================
 app.get('/requests', (req, res) => {
 
@@ -98,14 +94,10 @@ app.get('/requests', (req, res) => {
         ORDER BY id DESC
     `, [], (err, rows) => {
 
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
+        if (err) return res.status(500).json({ error: err.message });
 
         res.json(rows);
-
     });
-
 });
 
 // =========================
@@ -161,5 +153,5 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
-    console.log(`Server Running On Port ${PORT}`);
+    console.log(`Server running on ${PORT}`);
 });
