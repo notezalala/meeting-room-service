@@ -27,14 +27,17 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-// ================= DATABASE =================
+// ================= DATABASE (FIXED ORDER) =================
 const db = new sqlite3.Database('./meeting.db', (err) => {
-    if (err) console.log(err);
-    else console.log("SQLite Connected");
+    if (err) {
+        console.log(err);
+    } else {
+        console.log("SQLite Connected");
+    }
 });
 
-// 🔥 FIX: เพิ่ม queue_number ใน table
 db.serialize(() => {
+
     db.run(`
         CREATE TABLE IF NOT EXISTS requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,71 +49,52 @@ db.serialize(() => {
             serve_time TEXT,
             comment TEXT,
             status TEXT DEFAULT 'PENDING',
-            queue_number INTEGER,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
+
 });
-
-// ================= QUEUE SYSTEM =================
-let todayQueue = 1;
-let currentDate = new Date().toDateString();
-
-// รีเซตทุกวันตอนข้ามวัน
-function resetQueueIfNewDay() {
-    const nowDate = new Date().toDateString();
-
-    if (nowDate !== currentDate) {
-        currentDate = nowDate;
-        todayQueue = 1;
-        console.log("🔄 Reset queue at midnight:", currentDate);
-    }
-}
-
-// เช็คทุก 1 นาที
-setInterval(resetQueueIfNewDay, 60 * 1000);
-
-// เรียกตอนสร้างเลขคิว
-function getQueueNumber() {
-    resetQueueIfNewDay();
-    return todayQueue++;
-}
 
 // ================= POST ORDER =================
 app.post('/request', (req, res) => {
 
-    const { room, coffee, water, tea, serve_time, comment, customer_name } = req.body;
-
-    const queue_number = getQueueNumber();
+    const {
+        room,
+        customer_name,
+        coffee,
+        water,
+        tea,
+        serve_time,
+        comment
+    } = req.body;
 
     db.run(`
         INSERT INTO requests
-        (room_name, coffee, water, tea, serve_time, comment, status, customer_name, queue_number)
-        VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)
+        (room_name, customer_name, coffee, water, tea, serve_time, comment, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')
     `,
-    [room, coffee, water, tea, serve_time, comment, customer_name, queue_number],
+    [room, customer_name, coffee, water, tea, serve_time, comment],
     function (err) {
 
-        // 🔥 FIX: กัน silent fail
         if (err) {
-            console.log("DB ERROR:", err);
+            console.log(err);
             return res.status(500).json({ error: err.message });
         }
 
-        const data = {
+        const newData = {
             id: this.lastID,
             room_name: room,
+            customer_name,
             coffee,
             water,
             tea,
             serve_time,
             comment,
-            customer_name,
-            queue_number,
             status: 'PENDING'
         };
 
-        io.emit('new_request', data);
+        io.emit('new_request', newData);
+
         res.json({ success: true });
     });
 });
@@ -120,7 +104,7 @@ io.on('connection', (socket) => {
 
     console.log("Client connected");
 
-    // ================= LOAD ALL =================
+    // โหลดทั้งหมด
     socket.on('get_all_requests', () => {
 
         db.all(`
@@ -129,20 +113,20 @@ io.on('connection', (socket) => {
             ORDER BY id DESC
         `, [], (err, rows) => {
 
-            if (err) {
-                console.log("DB ERROR:", err);
-                return;
+            if (!err) {
+                socket.emit('all_requests', rows);
             }
 
-            socket.emit('all_requests', rows);
         });
+
     });
 
-    // ================= UPDATE STATUS =================
+    // อัปเดตสถานะ
     socket.on('update_status', (data) => {
 
         const { id, status } = data;
 
+        // ถ้าเสร็จ = ลบออก
         if (status === 'done') {
 
             db.run(`DELETE FROM requests WHERE id = ?`, [id], () => {

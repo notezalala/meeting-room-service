@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>Order</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="header">
+        ☕ Meeting Room Service
+        <div class="room-title" id="roomTitle"></div>
+    </div>
+
+    <!-- ================= NAME ================= -->
+    <div class="section">
+
+        <div class="title">ชื่อผู้สั่ง</div>
+
+        <input type="text"
+               id="customerName"
+               placeholder="กรอกชื่อผู้สั่ง..."
+               style="
+                    width:100%;
+                    padding:15px;
+                    border-radius:15px;
+                    border:1px solid #ccc;
+                    font-size:18px;
+                    box-sizing:border-box;
+               ">
+
+    </div>
+
+    <!-- ================= DRINK ================= -->
+    <div class="section">
+
+        <div class="title">เลือกเครื่องดื่ม</div>
+
+        <div class="menu-grid">
+
+            <div class="menu-card">
+                <img src="https://images.emojiterra.com/google/android-oreo/512px/2615.png">
+                <div class="menu-name">Coffee</div>
+
+                <div class="counter">
+                    <button class="minus" onclick="change('coffee',-1)">-</button>
+                    <div id="coffeeCount">0</div>
+                    <button class="plus" onclick="change('coffee',1)">+</button>
+                </div>
+            </div>
+
+            <div class="menu-card">
+                <img src="https://png.pngtree.com/png-vector/20260104/ourmid/pngtree-a-glass-of-sparkling-water-on-white-background-png-image_18419981.webp">
+                <div class="menu-name">Water</div>
+
+                <div class="counter">
+                    <button class="minus" onclick="change('water',-1)">-</button>
+                    <div id="waterCount">0</div>
+                    <button class="plus" onclick="change('water',1)">+</button>
+                </div>
+            </div>
+
+            <div class="menu-card">
+                <img src="https://em-content.zobj.net/source/microsoft-teams/337/teacup-without-handle_1f375.png">
+                <div class="menu-name">Tea</div>
+
+                <div class="counter">
+                    <button class="minus" onclick="change('tea',-1)">-</button>
+                    <div id="teaCount">0</div>
+                    <button class="plus" onclick="change('tea',1)">+</button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ================= TIME ================= -->
+    <div class="section">
+
+        <div class="title">เวลาเสิร์ฟ</div>
+
+        <div class="time-grid">
+            <button class="time-btn active" onclick="selectTime(this,'ตอนนี้')">ตอนนี้</button>
+            <button class="time-btn" id="t15">Loading...</button>
+            <button class="time-btn" id="t30">Loading...</button>
+            <button class="time-btn" onclick="customTime()">กำหนดเอง</button>
+        </div>
+
+    </div>
+
+    <!-- ================= COMMENT ================= -->
+    <div class="section">
+
+        <div class="title">หมายเหตุ</div>
+        <textarea id="comment"></textarea>
+
+    </div>
+
+    <button class="send-btn" onclick="send()">ส่งรายการ</button>
+
+</div>
+
+<script>
+
+let coffee=0, water=0, tea=0;
+let serve_time="ตอนนี้";
+
+const room = new URLSearchParams(location.search).get('room');
+document.getElementById('roomTitle').innerText = room;
+
+// ================= CHANGE =================
+function change(type,val){
+    if(type==='coffee') coffee=Math.max(0,coffee+val);
+    if(type==='water') water=Math.max(0,water+val);
+    if(type==='tea') tea=Math.max(0,tea+val);
+
+    document.getElementById('coffeeCount').innerText=coffee;
+    document.getElementById('waterCount').innerText=water;
+    document.getElementById('teaCount').innerText=tea;
+}
+
+// ================= TIME =================
+function selectTime(btn,time){
+    document.querySelectorAll('.time-btn')
+    .forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    serve_time=time;
+}
+
+function customTime(){
+    const t = prompt("ใส่เวลา เช่น 13:30");
+    if(t) serve_time=t;
+}
+
+// ================= FORMAT TIME =================
+function format(d){
+    return String(d.getHours()).padStart(2,'0')+":"+String(d.getMinutes()).padStart(2,'0');
+}
+
+// ================= LOAD TIME BUTTON =================
+window.onload=function(){
+    const now=new Date();
+
+    const t15 = document.getElementById('t15');
+    const t30 = document.getElementById('t30');
+
+    t15.innerText = format(new Date(now.getTime()+15*60000));
+    t30.innerText = format(new Date(now.getTime()+30*60000));
+
+    t15.onclick=()=>selectTime(t15,t15.innerText);
+    t30.onclick=()=>selectTime(t30,t30.innerText);
+}
+
+// ================= SEND =================
+async function send(){
+
+    const name = document.getElementById('customerName').value.trim();
+
+    // ❌ ไม่มีชื่อ
+    if(!name){
+        alert("กรุณากรอกชื่อผู้สั่ง");
+        return;
+    }
+
+    // ❌ ไม่เลือกอะไรเลย (สำคัญ)
+    if(coffee === 0 && water === 0 && tea === 0){
+        alert("กรุณาเลือกเครื่องดื่มอย่างน้อย 1 รายการ");
+        return;
+    }
+
+    try{
+
+        await fetch('/request',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                room,
+                customer_name: name,
+                coffee,
+                water,
+                tea,
+                serve_time,
+                comment:document.getElementById('comment').value
+            })
+        });
+
+        alert("ส่งรายการสำเร็จ");
+
+        // reset
+        coffee = 0;
+        water = 0;
+        tea = 0;
+        serve_time = "ตอนนี้";
+
+        document.getElementById('comment').value='';
+        document.getElementById('customerName').value='';
+
+        change('coffee',0);
+
+    }catch(err){
+        console.log(err);
+        alert("เกิดข้อผิดพลาด");
+    }
+}
+
+</script>
+
+</body>
+</html>
