@@ -1,208 +1,141 @@
-<!DOCTYPE html>
-<html lang="th">
-
-<head>
-
-<meta charset="UTF-8">
-
-<title>Dashboard</title>
-
-<link rel="stylesheet" href="style.css">
-
-<script src="/socket.io/socket.io.js"></script>
-
-</head>
-
-<body class="dashboard-body">
-
-<div class="dashboard-header">
-
-    ☕ Housekeeping Dashboard
-
-</div>
-
-<div class="dashboard-container"
-    id="orders">
-
-</div>
-
 <script>
 
 const socket = io();
 
 loadOldOrders();
 
-socket.on('new_request', (data)=>{
-
-    addCard(data);
-
-});
-
+// =====================
+// LOAD OLD DATA
+// =====================
 async function loadOldOrders(){
-
     try{
+        const response = await fetch('/requests');
+        const orders = await response.json();
 
-        const response =
-            await fetch('/requests');
-
-        const orders =
-            await response.json();
+        document.getElementById('orders').innerHTML = "";
 
         orders.forEach(order => {
 
             addCard({
-
                 id: order.id,
-
                 room: order.room_name,
-
                 coffee: order.coffee,
-
                 water: order.water,
-
                 tea: order.tea,
-
                 serve_time: order.serve_time,
-
                 comment: order.comment,
-
                 status: order.status
-
             });
 
         });
 
     }catch(err){
-
         console.log(err);
-
     }
-
 }
 
+// =====================
+// REALTIME NEW ORDER
+// =====================
+socket.on('new_request', (data)=>{
+    addCard(data);
+});
+
+// =====================
+// ADD CARD
+// =====================
 function addCard(data){
 
-    if(document.getElementById(`card-${data.id}`))
-        return;
+    if(document.getElementById(`card-${data.id}`)) return;
 
     let statusClass = 'pending';
-
     let statusText = 'รอดำเนินการ';
 
     if(data.status === 'PREPARING'){
-
         statusClass = 'preparing';
-
         statusText = 'กำลังเตรียม';
-
     }
 
     if(data.status === 'DONE'){
-
         statusClass = 'done';
-
         statusText = 'เสร็จสิ้น';
-
     }
 
     const div = document.createElement('div');
-
     div.className = "card";
-
     div.id = `card-${data.id}`;
 
     div.innerHTML = `
-
         <div>
 
             <div class="room">
-
                 ${data.room}
-
             </div>
 
             <div class="info">
-
                 ☕ Coffee : ${data.coffee}<br>
-
                 💧 Water : ${data.water}<br>
-
                 🍵 Tea : ${data.tea}
-
                 <br><br>
-
-                🕒 เวลาเสิร์ฟ :
-                ${data.serve_time}
-
+                🕒 เวลาเสิร์ฟ : ${data.serve_time}
                 <br><br>
-
-                📝 หมายเหตุ :
-                ${data.comment || '-'}
-
+                📝 หมายเหตุ : ${data.comment || '-'}
             </div>
 
-            <div class="status ${statusClass}"
-                id="status-${data.id}">
-
+            <div class="status ${statusClass}" id="status-${data.id}">
                 ${statusText}
-
             </div>
 
         </div>
 
         <div class="actions">
 
-            <button class="btn-preparing"
-                onclick="setPreparing(${data.id})">
-
+            <button class="btn-preparing" onclick="setPreparing(${data.id})">
                 กำลังเตรียม
-
             </button>
 
-            <button class="btn-done"
-                onclick="setDone(${data.id})">
-
+            <button class="btn-done" onclick="setDone(${data.id})">
                 เสร็จสิ้น
-
             </button>
 
         </div>
-
     `;
 
-    document.getElementById('orders')
-        .prepend(div);
-
+    document.getElementById('orders').prepend(div);
 }
 
+// =====================
+// UPDATE STATUS (FIX)
+// =====================
 function setPreparing(id){
 
-    const status =
-        document.getElementById(`status-${id}`);
+    socket.emit('update_status', {
+        id: id,
+        status: 'PREPARING'
+    });
 
-    status.innerHTML =
-        "กำลังเตรียม";
-
-    status.className =
-        "status preparing";
-
+    updateUI(id, 'preparing', 'กำลังเตรียม');
 }
 
 function setDone(id){
 
-    const status =
-        document.getElementById(`status-${id}`);
+    socket.emit('update_status', {
+        id: id,
+        status: 'DONE'
+    });
 
-    status.innerHTML =
-        "เสร็จสิ้น";
+    updateUI(id, 'done', 'เสร็จสิ้น');
+}
 
-    status.className =
-        "status done";
+// =====================
+// UI UPDATE ONLY
+// =====================
+function updateUI(id, className, text){
 
+    const status = document.getElementById(`status-${id}`);
+
+    status.innerHTML = text;
+    status.className = `status ${className}`;
 }
 
 </script>
-
-</body>
-
-</html>
