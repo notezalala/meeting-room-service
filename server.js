@@ -144,7 +144,40 @@ app.post('/request', (req, res) => {
     );
 
 });
+app.get('/requests', (req, res) => {
 
+    db.all(
+
+        `
+
+        SELECT *
+        FROM requests
+
+        ORDER BY id DESC
+
+        `,
+
+        [],
+
+        (err, rows) => {
+
+            if(err){
+
+                return res.status(500).json({
+
+                    error: err.message
+
+                });
+
+            }
+
+            res.json(rows);
+
+        }
+
+    );
+
+});
 io.on('connection', () => {
 
     console.log('Client Connected');

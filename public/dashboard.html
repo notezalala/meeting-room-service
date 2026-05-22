@@ -107,8 +107,11 @@ body{
 <div class="container" id="orders"></div>
 
 <script>
+<script>
 
 const socket = io();
+
+loadOldOrders();
 
 socket.on('new_request', (data)=>{
 
@@ -116,11 +119,48 @@ socket.on('new_request', (data)=>{
 
 });
 
+async function loadOldOrders(){
+
+    const response =
+        await fetch('/requests');
+
+    const orders =
+        await response.json();
+
+    orders.forEach(order => {
+
+        addCard({
+
+            id: order.id,
+
+            room: order.room_name,
+
+            coffee: order.coffee,
+
+            water: order.water,
+
+            tea: order.tea,
+
+            serve_time: order.serve_time,
+
+            comment: order.comment
+
+        });
+
+    });
+
+}
+
 function addCard(data){
+
+    if(document.getElementById(`card-${data.id}`))
+        return;
 
     const div = document.createElement('div');
 
     div.className = "card";
+
+    div.id = `card-${data.id}`;
 
     div.innerHTML = `
 
