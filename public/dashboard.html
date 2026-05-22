@@ -74,9 +74,7 @@ function render(list){
     const container = document.getElementById('orders');
     container.innerHTML = "";
 
-    list.forEach((d, i) => {
-
-        const number = list.length - i;
+    list.forEach((d) => {
 
         const div = document.createElement('div');
         div.className = 'card';
@@ -86,7 +84,7 @@ function render(list){
             <div>
 
                 <div class="room">
-                    #${number} ${d.room_name || '-'}
+                    #${d.id} ${d.room_name || '-'}
                 </div>
 
                 <div class="info">
@@ -96,6 +94,7 @@ function render(list){
                     ☕ Coffee : ${d.coffee}<br>
                     💧 Water : ${d.water}<br>
                     🍵 Tea : ${d.tea}<br><br>
+
                     🕒 ต้องการเสิร์ฟ ${d.serve_time}<br>
                     📝 ${d.comment || '-'}
 
