@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // =========================
-// ROUTE FIX (Render safe)
+// ROUTE FIX
 // =========================
 app.get('/order.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'order.html'));
@@ -81,10 +81,11 @@ app.post('/request', (req, res) => {
 
         res.json({ success: true });
     });
+
 });
 
 // =========================
-// GET ALL (LATEST FIRST)
+// GET ORDERS (LATEST FIRST)
 // =========================
 app.get('/requests', (req, res) => {
 
@@ -97,7 +98,9 @@ app.get('/requests', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
 
         res.json(rows);
+
     });
+
 });
 
 // =========================
@@ -148,7 +151,7 @@ io.on('connection', (socket) => {
 });
 
 // =========================
-// START
+// START SERVER
 // =========================
 const PORT = process.env.PORT || 3000;
 

@@ -20,7 +20,7 @@
 const socket = io();
 
 // =====================
-// LOAD ALL
+// LOAD DATA
 // =====================
 socket.emit('get_all_requests');
 
@@ -29,8 +29,8 @@ socket.on('all_requests', (list) => {
     const container = document.getElementById('orders');
     container.innerHTML = "";
 
-    // 🔥 FORCE newest first
-    list.sort((a,b) => b.id - a.id).forEach(addCard);
+    // 🔥 สำคัญ: ใช้ลำดับจาก server เท่านั้น
+    list.forEach(addCard);
 
 });
 
@@ -88,6 +88,7 @@ function addCard(data){
         </div>
     `;
 
+    // 🔥 NEW ALWAYS ON TOP
     document.getElementById('orders').prepend(div);
 }
 
