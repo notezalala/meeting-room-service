@@ -158,36 +158,59 @@ window.onload=function(){
 // ================= SEND =================
 async function send(){
 
-    const name = document.getElementById('customerName').value;
+    const name = document.getElementById('customerName').value.trim();
 
+    // ❌ ไม่มีชื่อ
     if(!name){
         alert("กรุณากรอกชื่อผู้สั่ง");
         return;
     }
 
-    await fetch('/request',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-            room,
-            customer_name: name,
-            coffee,
-            water,
-            tea,
-            serve_time,
-            comment:document.getElementById('comment').value
-        })
-    });
+    // ❌ ไม่เลือกอะไรเลย
+    if(coffee === 0 && water === 0 && tea === 0){
+        alert("กรุณาเลือกเครื่องดื่มอย่างน้อย 1 รายการ");
+        return;
+    }
 
-    alert("ส่งรายการสำเร็จ");
+    // ❌ ถ้า "น้ำ" = 0 (ตามที่คุณขอเพิ่มเงื่อนไขเฉพาะ)
+    if(water === 0){
+        alert("กรุณาเลือกจำนวนน้ำอย่างน้อย 1 แก้ว");
+        return;
+    }
 
-    coffee=water=tea=0;
-    serve_time="ตอนนี้";
+    try{
 
-    document.getElementById('comment').value='';
-    document.getElementById('customerName').value='';
+        await fetch('/request',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                room,
+                customer_name: name,
+                coffee,
+                water,
+                tea,
+                serve_time,
+                comment:document.getElementById('comment').value
+            })
+        });
 
-    change('coffee',0);
+        alert("ส่งรายการสำเร็จ");
+
+        // reset
+        coffee = 0;
+        water = 0;
+        tea = 0;
+        serve_time = "ตอนนี้";
+
+        document.getElementById('comment').value='';
+        document.getElementById('customerName').value='';
+
+        change('coffee',0);
+
+    }catch(err){
+        console.log(err);
+        alert("เกิดข้อผิดพลาด");
+    }
 }
 
 </script>
