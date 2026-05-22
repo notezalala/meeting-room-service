@@ -2,6 +2,20 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const sqlite3 = require('sqlite3').verbose();
+
+const db = new sqlite3.Database('./meeting.db', (err) => {
+
+    if(err){
+
+        console.log(err);
+
+    }else{
+
+        console.log("SQLite Connected");
+
+    }
+
+});
 const cors = require('cors');
 
 const app = express();
