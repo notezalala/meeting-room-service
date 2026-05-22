@@ -1,54 +1,134 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard</title>
+<link rel="stylesheet" href="style.css">
+<script src="/socket.io/socket.io.js"></script>
+</head>
+
+<body class="dashboard-body">
+
+<div class="dashboard-header">
+☕ Housekeeping Dashboard
+</div>
+
+<div class="dashboard-container" id="orders"></div>
+
+<script>
+
 const socket = io();
 
-// LOAD
+let list = [];
+
+// ================= LOAD =================
 socket.emit('get_all_requests');
 
-socket.on('all_requests', (list) => {
+socket.on('all_requests', (data) => {
 
-    const container = document.getElementById('orders');
-    container.innerHTML = "";
+    list = data.sort((a,b)=>b.id-a.id);
+    render();
 
-    // 🔥 HARD SORT (กัน DB เพี้ยน)
-    list.sort((a, b) => b.id - a.id);
-
-    list.forEach(addCard);
 });
 
-// REALTIME
+// ================= NEW =================
 socket.on('new_request', (data) => {
 
-    if(document.getElementById(`card-${data.id}`)) return;
+    list.unshift(data);
+    render();
 
-    addCard(data);
 });
 
-// CARD
-function addCard(data){
+// ================= STATUS UPDATE (IMPORTANT FIX) =================
+socket.on('status_updated', ({ id, status }) => {
+
+    const el = document.getElementById(`status-${id}`);
+    if (!el) return;
+
+    el.className = `status ${status}`;
+
+    if (status === 'preparing') el.innerHTML = 'กำลังเตรียม';
+    if (status === 'done') el.innerHTML = 'เสร็จสิ้น';
+
+});
+
+// ================= RENDER =================
+function render(){
+
+    const c = document.getElementById('orders');
+    c.innerHTML = "";
+
+    list.forEach((item, i) => {
+        c.appendChild(card(item, i+1));
+    });
+
+}
+
+// ================= CARD =================
+function card(d, no){
 
     const div = document.createElement('div');
     div.className = "card";
-    div.id = `card-${data.id}`;
 
     div.innerHTML = `
         <div>
 
-            <div class="room">${data.room || 'UNKNOWN'}</div>
+            <div class="room">
+                #${no} - ${d.room_name || 'UNKNOWN'}
+            </div>
 
             <div class="info">
-                ☕ Coffee : ${data.coffee}<br>
-                💧 Water : ${data.water}<br>
-                🍵 Tea : ${data.tea}<br><br>
-                🕒 เวลาเสิร์ฟ : ${data.serve_time}<br><br>
-                📝 หมายเหตุ : ${data.comment || '-'}
+                ☕ Coffee : ${d.coffee || 0}<br>
+                💧 Water : ${d.water || 0}<br>
+                🍵 Tea : ${d.tea || 0}<br><br>
+
+                🕒 ${d.serve_time || '-'}<br><br>
+
+                📝 ${d.comment || '-'}
             </div>
 
-            <div class="status" id="status-${data.id}">
-                ${data.status}
+            <div class="status ${d.status}" id="status-${d.id}">
+                ${text(d.status)}
             </div>
+
+        </div>
+
+        <div class="actions">
+
+            <button onclick="prep(${d.id})" class="btn-preparing">
+                กำลังเตรียม
+            </button>
+
+            <button onclick="done(${d.id})" class="btn-done">
+                เสร็จสิ้น
+            </button>
 
         </div>
     `;
 
-    // 🔥 IMPORTANT: always top
-    container.prepend(div);
+    return div;
 }
+
+// ================= STATUS TEXT =================
+function text(s){
+
+    if(s === 'PENDING') return 'รอดำเนินการ';
+    if(s === 'preparing') return 'กำลังเตรียม';
+    if(s === 'done') return 'เสร็จสิ้น';
+
+    return s;
+}
+
+// ================= BUTTONS (FIX HERE) =================
+function prep(id){
+    socket.emit('update_status', { id, status: 'preparing' });
+}
+
+function done(id){
+    socket.emit('update_status', { id, status: 'done' });
+}
+
+</script>
+
+</body>
+</html>
