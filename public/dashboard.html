@@ -1,16 +1,10 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
-
 <meta charset="UTF-8">
-
 <title>Dashboard</title>
-
 <link rel="stylesheet" href="style.css">
-
 <script src="/socket.io/socket.io.js"></script>
-
 </head>
 
 <body class="dashboard-body">
@@ -19,28 +13,37 @@
 ☕ Housekeeping Dashboard
 </div>
 
-<div class="dashboard-container"
-    id="orders">
-</div>
+<div class="dashboard-container" id="orders"></div>
 
 <script>
 
 const socket = io();
 
-socket.on('new_request', (data)=>{
+// ============================
+// โหลดข้อมูลเก่าตอนเปิดหน้า
+// ============================
+socket.emit('get_all_requests');
 
-    addCard(data);
-
+// รับข้อมูลทั้งหมดตอนโหลดครั้งแรก
+socket.on('all_requests', (list) => {
+    document.getElementById('orders').innerHTML = "";
+    list.forEach(addCard);
 });
 
+// รับรายการใหม่ realtime
+socket.on('new_request', (data) => {
+    addCard(data);
+});
+
+// ============================
+// สร้าง Card
+// ============================
 function addCard(data){
 
     const div = document.createElement('div');
-
     div.className = "card";
 
     div.innerHTML = `
-
         <div>
 
             <div class="room">
@@ -48,30 +51,17 @@ function addCard(data){
             </div>
 
             <div class="info">
-
                 ☕ Coffee : ${data.coffee}<br>
-
                 💧 Water : ${data.water}<br>
-
                 🍵 Tea : ${data.tea}
-
                 <br><br>
-
-                🕒 เวลาเสิร์ฟ :
-                ${data.serve_time}
-
+                🕒 เวลาเสิร์ฟ : ${data.serve_time}
                 <br><br>
-
-                📝 หมายเหตุ :
-                ${data.comment || '-'}
-
+                📝 หมายเหตุ : ${data.comment || '-'}
             </div>
 
-            <div class="status pending"
-                id="status-${data.id}">
-
+            <div class="status pending" id="status-${data.id}">
                 รอดำเนินการ
-
             </div>
 
         </div>
@@ -80,55 +70,46 @@ function addCard(data){
 
             <button class="btn-preparing"
                 onclick="setPreparing(${data.id})">
-
                 กำลังเตรียม
-
             </button>
 
             <button class="btn-done"
                 onclick="setDone(${data.id})">
-
                 เสร็จสิ้น
-
             </button>
 
         </div>
-
     `;
 
-    document.getElementById('orders')
-        .prepend(div);
-
+    document.getElementById('orders').prepend(div);
 }
 
+// ============================
+// update status UI
+// ============================
 function setPreparing(id){
+    const status = document.getElementById(`status-${id}`);
+    status.innerHTML = "กำลังเตรียม";
+    status.className = "status preparing";
 
-    const status =
-        document.getElementById(`status-${id}`);
-
-    status.innerHTML =
-        "กำลังเตรียม";
-
-    status.className =
-        "status preparing";
-
+    socket.emit('update_status', {
+        id: id,
+        status: 'preparing'
+    });
 }
 
 function setDone(id){
+    const status = document.getElementById(`status-${id}`);
+    status.innerHTML = "เสร็จสิ้น";
+    status.className = "status done";
 
-    const status =
-        document.getElementById(`status-${id}`);
-
-    status.innerHTML =
-        "เสร็จสิ้น";
-
-    status.className =
-        "status done";
-
+    socket.emit('update_status', {
+        id: id,
+        status: 'done'
+    });
 }
 
 </script>
 
 </body>
-
 </html>
