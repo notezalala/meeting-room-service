@@ -1,141 +1,154 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+<meta charset="UTF-8">
+<title>Order</title>
+
+<link rel="stylesheet" href="style.css">
+
+<!-- IMPORTANT: socket.io -->
+<script src="/socket.io/socket.io.js"></script>
+
+<style>
+body{
+    font-family: sans-serif;
+    padding: 20px;
+}
+
+.box{
+    max-width: 500px;
+    margin: auto;
+}
+
+input, button{
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+.time-btns button{
+    width: 48%;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+
+    <h2>☕ Order System</h2>
+
+    <input id="room" placeholder="Room">
+    <input id="coffee" type="number" placeholder="Coffee">
+    <input id="water" type="number" placeholder="Water">
+    <input id="tea" type="number" placeholder="Tea">
+
+    <input id="serve_time" placeholder="Serve Time">
+
+    <div class="time-btns">
+        <button onclick="setTime(15)">+15 นาที</button>
+        <button onclick="setTime(30)">+30 นาที</button>
+    </div>
+
+    <input id="comment" placeholder="Comment">
+
+    <button onclick="sendOrder()">ส่งออเดอร์</button>
+
+</div>
+
 <script>
 
-const socket = io();
-
-loadOldOrders();
+let socket;
 
 // =====================
-// LOAD OLD DATA
+// SAFE INIT SOCKET
 // =====================
-async function loadOldOrders(){
+window.onload = () => {
+    try {
+        socket = io();
+
+        socket.on("connect", () => {
+            console.log("Socket Connected");
+        });
+
+    } catch (err) {
+        console.log("Socket error:", err);
+    }
+
+    setRoomFromURL();
+};
+
+// =====================
+// GET ROOM FROM URL
+// =====================
+function setRoomFromURL(){
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get("room");
+
+    if(room){
+        document.getElementById("room").value = room;
+    }
+}
+
+// =====================
+// TIME +15 +30
+// =====================
+function getTimePlus(min){
+
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + min);
+
+    const hh = String(now.getHours()).padStart(2,'0');
+    const mm = String(now.getMinutes()).padStart(2,'0');
+
+    return `${hh}:${mm}`;
+}
+
+function setTime(min){
+    document.getElementById("serve_time").value = getTimePlus(min);
+}
+
+// =====================
+// SEND ORDER (SAFE)
+// =====================
+function sendOrder(){
+
     try{
-        const response = await fetch('/requests');
-        const orders = await response.json();
 
-        document.getElementById('orders').innerHTML = "";
+        const data = {
+            room: document.getElementById('room').value || '',
+            coffee: document.getElementById('coffee').value || 0,
+            water: document.getElementById('water').value || 0,
+            tea: document.getElementById('tea').value || 0,
+            serve_time: document.getElementById('serve_time').value || '',
+            comment: document.getElementById('comment').value || ''
+        };
 
-        orders.forEach(order => {
+        fetch('/request', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(() => {
 
-            addCard({
-                id: order.id,
-                room: order.room_name,
-                coffee: order.coffee,
-                water: order.water,
-                tea: order.tea,
-                serve_time: order.serve_time,
-                comment: order.comment,
-                status: order.status
-            });
+            alert("ส่งออเดอร์แล้ว");
+
+            document.getElementById('coffee').value = "";
+            document.getElementById('water').value = "";
+            document.getElementById('tea').value = "";
+            document.getElementById('serve_time').value = "";
+            document.getElementById('comment').value = "";
 
         });
 
     }catch(err){
-        console.log(err);
+        console.log("send error:", err);
     }
-}
-
-// =====================
-// REALTIME NEW ORDER
-// =====================
-socket.on('new_request', (data)=>{
-    addCard(data);
-});
-
-// =====================
-// ADD CARD
-// =====================
-function addCard(data){
-
-    if(document.getElementById(`card-${data.id}`)) return;
-
-    let statusClass = 'pending';
-    let statusText = 'รอดำเนินการ';
-
-    if(data.status === 'PREPARING'){
-        statusClass = 'preparing';
-        statusText = 'กำลังเตรียม';
-    }
-
-    if(data.status === 'DONE'){
-        statusClass = 'done';
-        statusText = 'เสร็จสิ้น';
-    }
-
-    const div = document.createElement('div');
-    div.className = "card";
-    div.id = `card-${data.id}`;
-
-    div.innerHTML = `
-        <div>
-
-            <div class="room">
-                ${data.room}
-            </div>
-
-            <div class="info">
-                ☕ Coffee : ${data.coffee}<br>
-                💧 Water : ${data.water}<br>
-                🍵 Tea : ${data.tea}
-                <br><br>
-                🕒 เวลาเสิร์ฟ : ${data.serve_time}
-                <br><br>
-                📝 หมายเหตุ : ${data.comment || '-'}
-            </div>
-
-            <div class="status ${statusClass}" id="status-${data.id}">
-                ${statusText}
-            </div>
-
-        </div>
-
-        <div class="actions">
-
-            <button class="btn-preparing" onclick="setPreparing(${data.id})">
-                กำลังเตรียม
-            </button>
-
-            <button class="btn-done" onclick="setDone(${data.id})">
-                เสร็จสิ้น
-            </button>
-
-        </div>
-    `;
-
-    document.getElementById('orders').prepend(div);
-}
-
-// =====================
-// UPDATE STATUS (FIX)
-// =====================
-function setPreparing(id){
-
-    socket.emit('update_status', {
-        id: id,
-        status: 'PREPARING'
-    });
-
-    updateUI(id, 'preparing', 'กำลังเตรียม');
-}
-
-function setDone(id){
-
-    socket.emit('update_status', {
-        id: id,
-        status: 'DONE'
-    });
-
-    updateUI(id, 'done', 'เสร็จสิ้น');
-}
-
-// =====================
-// UI UPDATE ONLY
-// =====================
-function updateUI(id, className, text){
-
-    const status = document.getElementById(`status-${id}`);
-
-    status.innerHTML = text;
-    status.className = `status ${className}`;
 }
 
 </script>
+
+</body>
+</html>
