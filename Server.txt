@@ -27,17 +27,14 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-// ================= DATABASE (FIXED ORDER) =================
+// ================= DATABASE =================
 const db = new sqlite3.Database('./meeting.db', (err) => {
-    if (err) {
-        console.log(err);
-    } else {
-        console.log("SQLite Connected");
-    }
+    if (err) console.log(err);
+    else console.log("SQLite Connected");
 });
 
+// 🔥 FIX: เพิ่ม queue_number ใน table
 db.serialize(() => {
-
     db.run(`
         CREATE TABLE IF NOT EXISTS requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,54 +46,96 @@ db.serialize(() => {
             serve_time TEXT,
             comment TEXT,
             status TEXT DEFAULT 'PENDING',
+            queue_number INTEGER,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
-
 });
+
+// ================= DAILY QUEUE =================
+function getQueueNumber(callback){
+
+    db.get(`
+        SELECT MAX(queue_number) as maxQueue
+        FROM requests
+        WHERE date(created_at,'localtime') = date('now','localtime')
+    `, [], (err,row)=>{
+
+        if(err){
+            callback(1);
+            return;
+        }
+
+        const nextQueue = (row?.maxQueue || 0) + 1;
+        callback(nextQueue);
+    });
+}
 
 // ================= POST ORDER =================
 app.post('/request', (req, res) => {
 
     const {
         room,
-        customer_name,
         coffee,
         water,
         tea,
         serve_time,
-        comment
+        comment,
+        customer_name
     } = req.body;
 
-    db.run(`
-        INSERT INTO requests
-        (room_name, customer_name, coffee, water, tea, serve_time, comment, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')
-    `,
-    [room, customer_name, coffee, water, tea, serve_time, comment],
-    function (err) {
+    getQueueNumber((queue_number)=>{
 
-        if (err) {
-            console.log(err);
-            return res.status(500).json({ error: err.message });
-        }
-
-        const newData = {
-            id: this.lastID,
-            room_name: room,
-            customer_name,
+        db.run(`
+            INSERT INTO requests
+            (
+                room_name,
+                coffee,
+                water,
+                tea,
+                serve_time,
+                comment,
+                status,
+                customer_name,
+                queue_number
+            )
+            VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)
+        `,
+        [
+            room,
             coffee,
             water,
             tea,
             serve_time,
             comment,
-            status: 'PENDING'
-        };
+            customer_name,
+            queue_number
+        ],
+        function(err){
 
-        io.emit('new_request', newData);
+            if(err){
+                console.log(err);
+                return res.status(500).json({error:err.message});
+            }
 
-        res.json({ success: true });
+            io.emit('new_request',{
+                id:this.lastID,
+                room_name:room,
+                coffee,
+                water,
+                tea,
+                serve_time,
+                comment,
+                customer_name,
+                queue_number,
+                status:'PENDING'
+            });
+
+            res.json({success:true});
+        });
+
     });
+
 });
 
 // ================= SOCKET.IO =================
@@ -104,7 +143,7 @@ io.on('connection', (socket) => {
 
     console.log("Client connected");
 
-    // โหลดทั้งหมด
+    // ================= LOAD ALL =================
     socket.on('get_all_requests', () => {
 
         db.all(`
@@ -113,20 +152,20 @@ io.on('connection', (socket) => {
             ORDER BY id DESC
         `, [], (err, rows) => {
 
-            if (!err) {
-                socket.emit('all_requests', rows);
+            if (err) {
+                console.log("DB ERROR:", err);
+                return;
             }
 
+            socket.emit('all_requests', rows);
         });
-
     });
 
-    // อัปเดตสถานะ
+    // ================= UPDATE STATUS =================
     socket.on('update_status', (data) => {
 
         const { id, status } = data;
 
-        // ถ้าเสร็จ = ลบออก
         if (status === 'done') {
 
             db.run(`DELETE FROM requests WHERE id = ?`, [id], () => {
@@ -150,6 +189,6 @@ io.on('connection', (socket) => {
 // ================= START SERVER =================
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on ${PORT}`);
 });

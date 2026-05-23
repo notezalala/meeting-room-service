@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard</title>
+<link rel="stylesheet" href="style.css">
+<script src="/socket.io/socket.io.js"></script>
+</head>
+
+<body class="dashboard-body">
+
+<div class="dashboard-header">
+☕ Beverage Meeting Room Dashboard
+</div>
+
+<div class="dashboard-container" id="orders"></div>
+
+<script>
+
+const socket = io();
+
+const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+
+function playSound(){
+    audio.currentTime = 0;
+    audio.play().catch(()=>{});
+}
+
+// ================= STATUS =================
+function translateStatus(status){
+    if(status === 'PENDING') return 'รอดำเนินการ';
+    if(status === 'pending') return 'รอดำเนินการ';
+    if(status === 'preparing') return 'กำลังเตรียม';
+    if(status === 'done') return 'เสร็จสิ้น';
+    return status;
+}
+
+function statusClass(status){
+    if(status === 'preparing') return 'status preparing';
+    if(status === 'done') return 'status done';
+    return 'status pending';
+}
+
+// ================= LOAD (สำคัญมาก) =================
+socket.emit('get_all_requests');
+
+socket.on('all_requests', (list) => {
+
+    render(list); // ใช้ server data ตรงๆ
+});
+
+// ================= NEW =================
+socket.on('new_request', (data) => {
+
+    // 🔥 สำคัญ: ดึงใหม่ทั้งชุด ไม่ใช้ unshift
+    socket.emit('get_all_requests');
+
+    playSound();
+});
+
+// ================= REMOVE =================
+socket.on('remove_request', () => {
+    socket.emit('get_all_requests');
+});
+
+// ================= STATUS UPDATE =================
+socket.on('status_updated', () => {
+    socket.emit('get_all_requests');
+});
+
+// ================= RENDER =================
+function render(list){
+
+    const container = document.getElementById('orders');
+    container.innerHTML = "";
+
+    list.forEach((d) => {
+
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.id = `card-${d.id}`;
+
+        div.innerHTML = `
+            <div>
+
+                <div class="room">
+                    #${d.queue_number} ${d.room_name || '-'}
+                </div>
+
+                <div class="info">
+
+                    👤 ผู้สั่ง: ${d.customer_name || '-'}<br><br>
+
+                    ☕ Coffee : ${d.coffee}<br>
+                    💧 Water : ${d.water}<br>
+                    🍵 Tea : ${d.tea}<br><br>
+
+                    🕒 ต้องการเสิร์ฟ ${d.serve_time}<br>
+                    📝 ${d.comment || '-'}
+
+                </div>
+
+                <div class="${statusClass(d.status)}" id="status-${d.id}">
+                    ${translateStatus(d.status)}
+                </div>
+
+            </div>
+
+            <div class="actions">
+                <button class="btn-preparing" onclick="prep(${d.id})">
+                    กำลังเตรียม
+                </button>
+
+                <button class="btn-done" onclick="done(${d.id})">
+                    เสร็จสิ้น
+                </button>
+            </div>
+        `;
+
+        container.appendChild(div);
+    });
+}
+
+// ================= ACTION =================
+function prep(id){
+    socket.emit('update_status',{id,status:'preparing'});
+}
+
+function done(id){
+    socket.emit('update_status',{id,status:'done'});
+}
+
+</script>
+
+</body>
+</html>

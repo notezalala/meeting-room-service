@@ -52,67 +52,90 @@ db.serialize(() => {
     `);
 });
 
-// ================= QUEUE SYSTEM =================
-let todayQueue = 1;
-let currentDate = new Date().toDateString();
+// ================= DAILY QUEUE =================
+function getQueueNumber(callback){
 
-// รีเซตทุกวันตอนข้ามวัน
-function resetQueueIfNewDay() {
-    const nowDate = new Date().toDateString();
+    db.get(`
+        SELECT MAX(queue_number) as maxQueue
+        FROM requests
+        WHERE date(created_at,'localtime') = date('now','localtime')
+    `, [], (err,row)=>{
 
-    if (nowDate !== currentDate) {
-        currentDate = nowDate;
-        todayQueue = 1;
-        console.log("🔄 Reset queue at midnight:", currentDate);
-    }
-}
+        if(err){
+            callback(1);
+            return;
+        }
 
-// เช็คทุก 1 นาที
-setInterval(resetQueueIfNewDay, 60 * 1000);
-
-// เรียกตอนสร้างเลขคิว
-function getQueueNumber() {
-    resetQueueIfNewDay();
-    return todayQueue++;
+        const nextQueue = (row?.maxQueue || 0) + 1;
+        callback(nextQueue);
+    });
 }
 
 // ================= POST ORDER =================
 app.post('/request', (req, res) => {
 
-    const { room, coffee, water, tea, serve_time, comment, customer_name } = req.body;
+    const {
+        room,
+        coffee,
+        water,
+        tea,
+        serve_time,
+        comment,
+        customer_name
+    } = req.body;
 
-    const queue_number = getQueueNumber();
+    getQueueNumber((queue_number)=>{
 
-    db.run(`
-        INSERT INTO requests
-        (room_name, coffee, water, tea, serve_time, comment, status, customer_name, queue_number)
-        VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)
-    `,
-    [room, coffee, water, tea, serve_time, comment, customer_name, queue_number],
-    function (err) {
-
-        // 🔥 FIX: กัน silent fail
-        if (err) {
-            console.log("DB ERROR:", err);
-            return res.status(500).json({ error: err.message });
-        }
-
-        const data = {
-            id: this.lastID,
-            room_name: room,
+        db.run(`
+            INSERT INTO requests
+            (
+                room_name,
+                coffee,
+                water,
+                tea,
+                serve_time,
+                comment,
+                status,
+                customer_name,
+                queue_number
+            )
+            VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)
+        `,
+        [
+            room,
             coffee,
             water,
             tea,
             serve_time,
             comment,
             customer_name,
-            queue_number,
-            status: 'PENDING'
-        };
+            queue_number
+        ],
+        function(err){
 
-        io.emit('new_request', data);
-        res.json({ success: true });
+            if(err){
+                console.log(err);
+                return res.status(500).json({error:err.message});
+            }
+
+            io.emit('new_request',{
+                id:this.lastID,
+                room_name:room,
+                coffee,
+                water,
+                tea,
+                serve_time,
+                comment,
+                customer_name,
+                queue_number,
+                status:'PENDING'
+            });
+
+            res.json({success:true});
+        });
+
     });
+
 });
 
 // ================= SOCKET.IO =================
@@ -166,6 +189,6 @@ io.on('connection', (socket) => {
 // ================= START SERVER =================
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on ${PORT}`);
 });
