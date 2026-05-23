@@ -1,0 +1,21 @@
+git status
+
+git add .
+
+git commit -m "update meeting room system"
+
+git branch  เช็ค branch
+
+git push origin master     ถ้าขึ้น master
+
+git push origin main	ถ้าขึ้น main
+
+
+
+********************************
+
+git add .
+git commit -m "update system"
+git push origin master
+
+********************************
