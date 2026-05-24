@@ -33,7 +33,7 @@ const db = new sqlite3.Database('./meeting.db', (err) => {
     else console.log("SQLite Connected");
 });
 
-// 🔥 FIX: เพิ่ม queue_number ใน table
+// ================= CREATE TABLE =================
 db.serialize(() => {
     db.run(`
         CREATE TABLE IF NOT EXISTS requests (
@@ -52,15 +52,50 @@ db.serialize(() => {
     `);
 });
 
-// ================= DAILY QUEUE =================
+// ================= MIDNIGHT RESET =================
+let lastResetDate = new Date().toDateString();
+
+function resetIfNewDay(){
+    const today = new Date().toDateString();
+
+    if(today !== lastResetDate){
+        console.log("🔄 Midnight Reset");
+        lastResetDate = today;
+
+        db.run(`DELETE FROM requests`, (err)=>{
+            if(err){
+                console.log(err);
+            }else{
+                console.log("🗑 Dashboard Cleared");
+                io.emit('remove_request');
+            }
+        });
+    }
+}
+
+setInterval(resetIfNewDay, 60000);
+
+// ================= CLEAR OLD DATA =================
+function clearOldData() {
+    db.run(`
+        DELETE FROM requests
+        WHERE DATE(created_at,'localtime')
+        < date('now','localtime')
+    `);
+}
+
+clearOldData();
+setInterval(clearOldData, 60000);
+
+// ================= QUEUE =================
 function getQueueNumber(callback){
+    resetIfNewDay();
 
     db.get(`
         SELECT MAX(queue_number) as maxQueue
         FROM requests
         WHERE date(created_at,'localtime') = date('now','localtime')
     `, [], (err,row)=>{
-
         if(err){
             callback(1);
             return;
@@ -88,17 +123,7 @@ app.post('/request', (req, res) => {
 
         db.run(`
             INSERT INTO requests
-            (
-                room_name,
-                coffee,
-                water,
-                tea,
-                serve_time,
-                comment,
-                status,
-                customer_name,
-                queue_number
-            )
+            (room_name, coffee, water, tea, serve_time, comment, status, customer_name, queue_number)
             VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)
         `,
         [
@@ -114,10 +139,10 @@ app.post('/request', (req, res) => {
         function(err){
 
             if(err){
-                console.log(err);
                 return res.status(500).json({error:err.message});
             }
 
+            // ================= EXISTING EVENT =================
             io.emit('new_request',{
                 id:this.lastID,
                 room_name:room,
@@ -129,6 +154,12 @@ app.post('/request', (req, res) => {
                 customer_name,
                 queue_number,
                 status:'PENDING'
+            });
+
+            // ================= 🔔 ADD SOUND EVENT (NEW) =================
+            io.emit('play_sound', {
+                type: 'new_order',
+                id: this.lastID
             });
 
             res.json({success:true});
@@ -143,17 +174,17 @@ io.on('connection', (socket) => {
 
     console.log("Client connected");
 
-    // ================= LOAD ALL =================
     socket.on('get_all_requests', () => {
 
         db.all(`
             SELECT *
             FROM requests
+            WHERE DATE(datetime(created_at,'localtime'))
+                  = DATE(datetime('now','localtime'))
             ORDER BY id DESC
         `, [], (err, rows) => {
 
             if (err) {
-                console.log("DB ERROR:", err);
                 return;
             }
 
@@ -161,7 +192,6 @@ io.on('connection', (socket) => {
         });
     });
 
-    // ================= UPDATE STATUS =================
     socket.on('update_status', (data) => {
 
         const { id, status } = data;
@@ -185,6 +215,40 @@ io.on('connection', (socket) => {
     });
 
 });
+
+// ================= MIDNIGHT AUTO CLEAR =================
+let lastClearDate = "";
+
+setInterval(() => {
+
+    const now = new Date();
+
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+
+    const today =
+        now.getFullYear() + "-" +
+        String(now.getMonth()+1).padStart(2,'0') + "-" +
+        String(now.getDate()).padStart(2,'0');
+
+    if(hour === 0 && minute === 0 && lastClearDate !== today){
+
+        db.run(`DELETE FROM requests`, (err)=>{
+
+            if(err){
+                return;
+            }
+
+            lastClearDate = today;
+
+            console.log("✅ Midnight clear completed");
+
+            io.emit('remove_request');
+            io.emit('all_requests', []);
+        });
+    }
+
+}, 60000);
 
 // ================= START SERVER =================
 const PORT = process.env.PORT || 3000;

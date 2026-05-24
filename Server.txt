@@ -52,8 +52,69 @@ db.serialize(() => {
     `);
 });
 
+// ================= MIDNIGHT RESET =================
+// รีเซตรายการ + queue ทุกเที่ยงคืน
+
+let lastResetDate = new Date().toDateString();
+
+function resetIfNewDay(){
+
+    const today = new Date().toDateString();
+
+    if(today !== lastResetDate){
+
+        console.log("🔄 Midnight Reset");
+
+        lastResetDate = today;
+
+        db.run(`DELETE FROM requests`, (err)=>{
+
+            if(err){
+                console.log(err);
+            }else{
+                console.log("🗑 Dashboard Cleared");
+
+                // refresh dashboard ทุก client
+                io.emit('remove_request');
+            }
+        });
+    }
+}
+
+// เช็คทุก 1 นาที
+setInterval(resetIfNewDay, 60000);
+
+// ================= CLEAR OLD DATA =================
+function clearOldData() {
+
+    db.run(`
+        DELETE FROM requests
+        WHERE DATE(created_at,'localtime')
+        < date('now','localtime')
+    `, (err) => {
+
+        if(err){
+            console.log("Clear old data error:", err);
+            return;
+        }
+
+        console.log("✅ Old orders cleared");
+    });
+}
+
+// ลบตอน server start
+clearOldData();
+
+// ลบทุก 1 นาที เผื่อข้ามเที่ยงคืน
+setInterval(() => {
+    clearOldData();
+}, 60000);
+
 // ================= DAILY QUEUE =================
 function getQueueNumber(callback){
+
+    // เช็ควันใหม่ก่อนทุกครั้ง
+    resetIfNewDay();
 
     db.get(`
         SELECT MAX(queue_number) as maxQueue
@@ -144,22 +205,37 @@ io.on('connection', (socket) => {
     console.log("Client connected");
 
     // ================= LOAD ALL =================
-    socket.on('get_all_requests', () => {
+socket.on('get_all_requests', () => {
 
-        db.all(`
-            SELECT *
-            FROM requests
-            ORDER BY id DESC
-        `, [], (err, rows) => {
+    db.all(`
+        SELECT
+            id,
+            room_name,
+            customer_name,
+            coffee,
+            water,
+            tea,
+            serve_time,
+            comment,
+            status,
+            queue_number,
+            created_at
+        FROM requests
+        WHERE DATE(datetime(created_at,'localtime'))
+              = DATE(datetime('now','localtime'))
+        ORDER BY id DESC
+    `, [], (err, rows) => {
 
-            if (err) {
-                console.log("DB ERROR:", err);
-                return;
-            }
+        if (err) {
+            console.log("DB ERROR:", err);
+            return;
+        }
 
-            socket.emit('all_requests', rows);
-        });
+        console.log("Today rows:", rows.length);
+
+        socket.emit('all_requests', rows);
     });
+});
 
     // ================= UPDATE STATUS =================
     socket.on('update_status', (data) => {
@@ -186,6 +262,42 @@ io.on('connection', (socket) => {
 
 });
 
+// ================= MIDNIGHT AUTO CLEAR =================
+let lastClearDate = "";
+
+setInterval(() => {
+
+    const now = new Date();
+
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+
+    const today =
+        now.getFullYear() + "-" +
+        String(now.getMonth()+1).padStart(2,'0') + "-" +
+        String(now.getDate()).padStart(2,'0');
+
+    // เที่ยงคืน และยังไม่เคลียร์วันนี้
+    if(hour === 0 && minute === 0 && lastClearDate !== today){
+
+        db.run(`DELETE FROM requests`, (err)=>{
+
+            if(err){
+                console.log("Delete error:", err);
+                return;
+            }
+
+            lastClearDate = today;
+
+            console.log("✅ Midnight clear completed");
+
+            // refresh dashboard ทุกเครื่อง
+            io.emit('remove_request');
+            io.emit('all_requests', []);
+        });
+    }
+
+}, 60000);
 // ================= START SERVER =================
 const PORT = process.env.PORT || 3000;
 

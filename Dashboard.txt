@@ -85,17 +85,32 @@ function render(list){
 
                 <div class="room">
                     #${d.queue_number} ${d.room_name || '-'}
+                    <br><br>
                 </div>
 
                 <div class="info">
-
+                
                     👤 ผู้สั่ง: ${d.customer_name || '-'}<br><br>
+                </div>
+                <div class="info2">
+                <img src="https://images.emojiterra.com/google/android-oreo/512px/2615.png"
+                style="width:35px;height:40px;vertical-align:-3px;margin-right:5px;">
+                Coffee : ${d.coffee}<br>
+                <img src="https://png.pngtree.com/png-vector/20260104/ourmid/pngtree-a-glass-of-sparkling-water-on-white-background-png-image_18419981.webp"
+                style="width:35px;height:40px;vertical-align:-3px;margin-right:5px;">
+                Water : ${d.water}<br>
+                <img src="https://em-content.zobj.net/source/microsoft-teams/337/teacup-without-handle_1f375.png"
+                style="width:35px;height:40px;vertical-align:-3px;margin-right:5px;">                
+                Tea : ${d.tea}<br><br>
 
-                    ☕ Coffee : ${d.coffee}<br>
-                    💧 Water : ${d.water}<br>
-                    🍵 Tea : ${d.tea}<br><br>
+                </div>
 
+                </div>
+                <div class="info3">
+
+                    <br><br>
                     🕒 ต้องการเสิร์ฟ ${d.serve_time}<br>
+                
                     📝 ${d.comment || '-'}
 
                 </div>
