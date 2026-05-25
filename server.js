@@ -51,7 +51,32 @@ db.serialize(() => {
         )
     `);
 });
+// ================= AUTO CLEAR OLD DAY =================
 
+function clearOldRequests(){
+
+    db.run(`
+        DELETE FROM requests
+        WHERE date(created_at,'localtime')
+              < date('now','localtime')
+    `, (err)=>{
+
+        if(err){
+            console.log("Clear old error",err);
+            return;
+        }
+
+        console.log("Old requests cleared");
+
+        io.emit('force_refresh');
+    });
+}
+
+// ตรวจทุก 1 นาที
+setInterval(clearOldRequests,60000);
+
+// ตอน server start
+clearOldRequests();
 // ================= MIDNIGHT RESET =================
 let lastResetDate = new Date().toDateString();
 
@@ -174,23 +199,24 @@ io.on('connection', (socket) => {
 
     console.log("Client connected");
 
-    socket.on('get_all_requests', () => {
+socket.on('get_all_requests', () => {
 
-        db.all(`
-            SELECT *
-            FROM requests
-            WHERE DATE(datetime(created_at,'localtime'))
-                  = DATE(datetime('now','localtime'))
-            ORDER BY id DESC
-        `, [], (err, rows) => {
+    db.all(`
+        SELECT *
+        FROM requests
+        WHERE date(created_at,'localtime')
+              = date('now','localtime')
+        ORDER BY id DESC
+    `, [], (err, rows) => {
 
-            if (err) {
-                return;
-            }
+        if (err) {
+            console.log("DB ERROR:", err);
+            return;
+        }
 
-            socket.emit('all_requests', rows);
-        });
+        socket.emit('all_requests', rows);
     });
+});
 
     socket.on('update_status', (data) => {
 
